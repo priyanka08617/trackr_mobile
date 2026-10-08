@@ -16,26 +16,32 @@
 //   );
 // }
 
-import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
+// import { Stack } from "expo-router";
+// import * as SplashScreen from "expo-splash-screen";
+// import { useEffect } from "react";
+
+// export default function RootLayout() {
+//   useEffect(() => {
+//     SplashScreen.hideAsync();
+//   }, []);
+
+//   return (
+//     <Stack
+//       screenOptions={{
+//         headerShown: false,
+//       }}
+//     />
+//   );
+// }
+
+import { Stack } from "expo-router";
 
 export default function RootLayout() {
-  useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
-
   return (
-    <View style={styles.container}>
-      <Text>Hello Test</Text>
-    </View>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+      }}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-});
