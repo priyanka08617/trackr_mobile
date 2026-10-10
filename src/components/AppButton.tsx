@@ -1,19 +1,22 @@
 import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  type PressableProps,
-  type StyleProp,
-  type TextStyle,
-  type ViewStyle,
+    ActivityIndicator,
+    Pressable,
+    StyleSheet,
+    Text,
+    type PressableProps,
+    type StyleProp,
+    type TextStyle,
+    type ViewStyle,
 } from "react-native";
 
-import { BUTTON, COLORS, FONT_SIZE, FONT_WEIGHT } from "@/constants/theme";
+import { BUTTON, COLORS } from "@/constants/theme";
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "danger";
 
-export interface AppButtonProps extends Omit<PressableProps, "children" | "style"> {
+export interface AppButtonProps extends Omit<
+  PressableProps,
+  "children" | "style"
+> {
   title: string;
   variant?: ButtonVariant;
   loading?: boolean;
@@ -71,7 +74,8 @@ export function AppButton({
         {
           backgroundColor: colors.backgroundColor,
           borderColor: colors.borderColor,
-          opacity: isDisabled ? 0.6 : pressed ? 0.8 : 1,
+          // opacity: isDisabled ? 0.6 : pressed ? 0.8 : 1,
+          opacity: isDisabled ? BUTTON.disabledOpacity : pressed ? 0.8 : 1,
         },
         style,
       ]}
@@ -96,9 +100,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  // text: {
+  //   fontSize: FONT_SIZE.md,
+  //   fontWeight: FONT_WEIGHT.semibold,
+  // },
+
   text: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.semibold,
+    fontSize: BUTTON.fontSize,
+    fontWeight: BUTTON.fontWeight,
   },
 });
 

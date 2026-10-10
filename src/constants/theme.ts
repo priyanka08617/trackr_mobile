@@ -109,16 +109,27 @@ export const INPUT = {
   borderColor: COLORS.border,
   backgroundColor: COLORS.white,
   textColor: COLORS.text,
-  placeholderColor: COLORS.placeholder,
+  placeholderColor: COLORS.textLight,
   borderRadius: RADIUS.md,
   paddingHorizontal: SPACING.lg,
   fontSize: FONT_SIZE.md,
 };
 
+// export const BUTTON = {
+//   height: 48,
+//   borderRadius: RADIUS.md,
+//   paddingHorizontal: SPACING.lg,
+// };
+
 export const BUTTON = {
-  height: 48,
+  height: 52,
   borderRadius: RADIUS.md,
   paddingHorizontal: SPACING.lg,
+  backgroundColor: COLORS.primary,
+  textColor: COLORS.white,
+  fontSize: FONT_SIZE.md,
+  fontWeight: FONT_WEIGHT.semibold,
+  disabledOpacity: 0.6,
 };
 
 export const CARD = {

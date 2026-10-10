@@ -1,28 +1,38 @@
 import {
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  type TextInputProps,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+    type StyleProp,
+    type TextInputProps,
+    type ViewStyle,
 } from "react-native";
 
-import { COLORS, FONT_SIZE, FONT_WEIGHT, INPUT, SPACING } from "@/constants/theme";
+import {
+    COLORS,
+    FONT_SIZE,
+    FONT_WEIGHT,
+    INPUT,
+    SPACING,
+} from "@/constants/theme";
 
 export interface AppInputProps extends TextInputProps {
   label?: string;
   error?: string;
+  containerStyle?: StyleProp<ViewStyle>;
 }
 
 export function AppInput({
   label,
   error,
+  containerStyle,
   editable = true,
   style,
   accessibilityLabel,
   ...textInputProps
 }: AppInputProps) {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
         {...textInputProps}
