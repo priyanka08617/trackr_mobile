@@ -7,9 +7,16 @@ import {
   RADIUS,
   SPACING,
 } from "@/constants/theme";
+import { loginUser } from "@/services/authService";
 import type { Company } from "@/services/companyService";
-import { getSavedCompany } from "@/storage/companyStorage";
-import { getEmailError, getPasswordError } from "@/utils/validation";
+import {
+  clearAuthToken,
+  clearRefreshToken,
+  setAuthToken,
+  setRefreshToken,
+} from "@/storage/authStorage";
+import { clearCompany, getSavedCompany } from "@/storage/companyStorage";
+import { getPasswordError } from "@/utils/validation";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
@@ -57,20 +64,40 @@ export default function LoginScreen() {
     };
   }, []);
 
-  const handleLogin = () => {
-    const nextEmailError = getEmailError(email);
+  const handleLogin = async () => {
+    const nextEmailError = email.trim() ? undefined : "Username is required";
     const nextPasswordError = getPasswordError(password);
+
     setEmailError(nextEmailError);
     setPasswordError(nextPasswordError);
 
-    if (nextEmailError || nextPasswordError) {
-      return;
-    }
+    if (nextEmailError || nextPasswordError) return;
 
-    Alert.alert(
-      "Login not connected",
-      "Your login screen is ready, but the sign-in API still needs to be connected.",
-    );
+    try {
+      const result = await loginUser(email.trim(), password);
+
+      // if (result.success && result.data) {
+      //   Alert.alert("Success", "Login successful!");
+      //   console.log("Authenticated user:", result.data.user.username);
+      // }
+
+      if (result.success && result.data) {
+        try {
+          await setAuthToken(result.data.access_token);
+          await setRefreshToken(result.data.refresh_token);
+
+          router.replace("/dashboard");
+        } catch {
+          await Promise.allSettled([clearAuthToken(), clearRefreshToken()]);
+          Alert.alert("Error", "Unable to save login session.");
+        }
+      }
+    } catch (error) {
+      Alert.alert(
+        "Login Failed",
+        error instanceof Error ? error.message : "Something went wrong.",
+      );
+    }
   };
 
   const handleForgotPassword = () => {
@@ -80,9 +107,21 @@ export default function LoginScreen() {
     );
   };
 
-  const handleChangeCompany = () => {
-    setConfirmCompanyChange(false);
-    router.replace("/company");
+  // const handleChangeCompany = () => {
+  //   setConfirmCompanyChange(false);
+  //   router.replace("/company");
+  // };
+
+  const handleChangeCompany = async () => {
+    try {
+      await clearAuthToken();
+      await clearRefreshToken();
+      await clearCompany();
+      setConfirmCompanyChange(false);
+      router.replace("/company");
+    } catch {
+      Alert.alert("Error", "Unable to change company.");
+    }
   };
 
   const companyName = company?.company_name ?? "Company not selected";

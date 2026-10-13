@@ -1,48 +1,59 @@
-import { request } from "@/services/apiService";
-import { clearAuthToken, setAuthToken } from "@/storage/authStorage";
-import { clearUser, setUser } from "@/storage/userStorage";
+import { getSavedCompany } from "@/storage/companyStorage";
 
-export interface LoginCredentials {
-  email: string;
-  password: string;
+export interface LoginResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    user: {
+      id: number;
+      username: string;
+      store_id: number;
+      user_category_id: number;
+      user_category: string;
+    };
+    access_token: string;
+    refresh_token: string;
+    token_type: string;
+    expires_in: number;
+  };
 }
 
-export interface AuthResponse<User = unknown> {
-  accessToken: string;
-  user?: User;
-}
+export async function loginUser(
+  username: string,
+  password: string,
+): Promise<LoginResponse> {
+  const company = await getSavedCompany();
 
-export async function login<User = unknown>(
-  credentials: LoginCredentials,
-): Promise<AuthResponse<User>> {
-  const result = await request<AuthResponse<User>>("/auth/login", {
+  if (!company) {
+    throw new Error("Please select a company first.");
+  }
+
+  const apiUrl = company.api_url.replace(/\/+$/, "");
+
+  const response = await fetch(`${apiUrl}/auth/login.php`, {
     method: "POST",
-    body: credentials,
-    authenticated: false,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username,
+      password,
+    }),
   });
 
-  if (!result.accessToken) {
-    throw new Error("The login response did not include an access token.");
+  const result: LoginResponse = await response.json();
+
+  if (response.status === 401) {
+    throw new Error("Incorrect username or password.");
   }
 
-  await setAuthToken(result.accessToken);
-  if (result.user !== undefined) {
-    await setUser(result.user);
+  if (!response.ok || !result.success) {
+    throw new Error(result.message || "Login failed.");
   }
+
+  if (!result.data?.access_token || !result.data?.user) {
+    throw new Error("Invalid login response.");
+  }
+
   return result;
 }
-
-export async function logout(): Promise<void> {
-  try {
-    await request<unknown>("/auth/logout", { method: "POST" });
-  } finally {
-    await Promise.all([clearAuthToken(), clearUser()]);
-  }
-}
-
-export function getCurrentUser<User = unknown>(): Promise<User> {
-  return request<User>("/auth/me");
-}
-
-export const authService = { login, logout, getCurrentUser };
-export default authService;

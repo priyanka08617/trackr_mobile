@@ -12,6 +12,7 @@ export const APP_CONFIG = {
     company: "trackr_company",
     authToken: "trackr_auth_token",
     user: "trackr_user",
+    refreshToken: "trackr_refresh_token",
   },
 
   routes: {

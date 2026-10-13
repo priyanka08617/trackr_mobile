@@ -8,10 +8,7 @@ export function isValidEmail(value: string): boolean {
   return EMAIL_PATTERN.test(value.trim());
 }
 
-export function isValidPassword(
-  value: string,
-  minimumLength = 8,
-): boolean {
+export function isValidPassword(value: string, minimumLength = 8): boolean {
   return value.length >= minimumLength;
 }
 
@@ -34,7 +31,4 @@ export function getPasswordError(
   if (!isRequired(value)) {
     return "Password is required.";
   }
-  return isValidPassword(value, minimumLength)
-    ? undefined
-    : `Password must be at least ${minimumLength} characters.`;
 }
