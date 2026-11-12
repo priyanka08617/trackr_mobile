@@ -1,4 +1,4 @@
-npm ls expoimport { AppButton } from "@/components/AppButton";
+import { AppButton } from "@/components/AppButton";
 import AreaIcon, { type AreaIconName } from "@/components/AreaIcon";
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
 import { Image } from "expo-image";
@@ -30,7 +30,8 @@ export default function ActionCard({
         <Image
           accessible={false}
           pointerEvents="none"
-          source={require("../../../../assets/images/icons/home-card-gradient.svg")}
+          // source={require("../../../../assets/images/icons/home-card-gradient.svg")}
+          source={require("../../assets/images/icons/home-card-gradient.svg")}
           contentFit="fill"
           style={styles.gradient}
         />
