@@ -1,4 +1,4 @@
-import { AppButton } from "@/components/AppButton";
+npm ls expoimport { AppButton } from "@/components/AppButton";
 import AreaIcon, { type AreaIconName } from "@/components/AreaIcon";
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
 import { Image } from "expo-image";

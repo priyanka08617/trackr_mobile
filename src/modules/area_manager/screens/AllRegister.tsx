@@ -115,6 +115,13 @@ export default function AllRegister() {
       >
         <Text style={styles.buttonText}>Escalation Matrix</Text>
       </Pressable>
+
+      <Pressable
+        style={styles.button}
+        onPress={() => router.push("/common/dashboard")}
+      >
+        <Text style={styles.buttonText}>Dashboard</Text>
+      </Pressable>
     </View>
   );
 
@@ -156,6 +163,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     alignItems: "center",
+    marginBottom: 15,
   },
   buttonText: {
     color: "#FFFFFF",
