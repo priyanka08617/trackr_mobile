@@ -128,6 +128,12 @@ export default function AllRegister() {
       >
         <Text style={styles.buttonText}>All Register</Text>
       </Pressable>
+      <Pressable
+        style={styles.button}
+        onPress={() => router.push("/common/all_tracker")}
+      >
+        <Text style={styles.buttonText}>All Tracker</Text>
+      </Pressable>
     </View>
   );
 

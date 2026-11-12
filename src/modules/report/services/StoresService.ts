@@ -34,7 +34,7 @@ export async function loadAreaStores(): Promise<AreaStore[]> {
   }
 
   const companyBaseUrl = company.api_url.replace(/\/+$/, ""); // already ends in /api/v1
-  const API_BASE = `${companyBaseUrl}/area_manager/controllers`;
+  const API_BASE = `${companyBaseUrl}/common`;
 
   // STEP 2: Get access token
   let token = await getAuthToken();
