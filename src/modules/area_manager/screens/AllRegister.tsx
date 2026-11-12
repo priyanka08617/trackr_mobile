@@ -115,6 +115,13 @@ export default function AllRegister() {
       >
         <Text style={styles.buttonText}>Escalation Matrix</Text>
       </Pressable>
+
+      <Pressable
+        style={styles.button}
+        onPress={() => router.push("/common/home")}
+      >
+        <Text style={styles.buttonText}>Home</Text>
+      </Pressable>
     </View>
   );
 

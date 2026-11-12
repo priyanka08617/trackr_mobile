@@ -30,7 +30,7 @@ export default function ActionCard({
         <Image
           accessible={false}
           pointerEvents="none"
-          source={require("../../../../assets/images/icons/home-card-gradient.svg")}
+          source={require("../../assets/images/icons/home-card-gradient.svg")}
           contentFit="fill"
           style={styles.gradient}
         />
