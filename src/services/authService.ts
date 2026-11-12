@@ -10,6 +10,7 @@ export interface LoginResponse {
       store_id: number;
       user_category_id: number;
       user_category: string;
+      user_login_folder_path: string;
     };
     access_token: string;
     refresh_token: string;

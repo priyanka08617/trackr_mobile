@@ -18,7 +18,7 @@ import {
 import { clearCompany, getSavedCompany } from "@/storage/companyStorage";
 import { getPasswordError } from "@/utils/validation";
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useState } from "react";
 import {
@@ -76,27 +76,41 @@ export default function LoginScreen() {
     try {
       const result = await loginUser(email.trim(), password);
 
-      // if (result.success && result.data) {
-      //   Alert.alert("Success", "Login successful!");
-      //   console.log("Authenticated user:", result.data.user.username);
-      // }
-
-      if (result.success && result.data) {
-        try {
-          await setAuthToken(result.data.access_token);
-          await setRefreshToken(result.data.refresh_token);
-
-          router.replace("/dashboard");
-        } catch {
-          await Promise.allSettled([clearAuthToken(), clearRefreshToken()]);
-          Alert.alert("Error", "Unable to save login session.");
-        }
+      if (!result.success || !result.data) {
+        throw new Error(result.message || "Login failed.");
       }
+
+      const folder = result.data.user.user_login_folder_path;
+      if (!folder || !/^[a-zA-Z0-9_]+$/.test(folder)) {
+        throw new Error("Invalid login folder.");
+      }
+
+      try {
+        await setAuthToken(result.data.access_token);
+        await setRefreshToken(result.data.refresh_token);
+      } catch (error) {
+        await Promise.allSettled([clearAuthToken(), clearRefreshToken()]);
+        throw new Error(
+          error instanceof Error
+            ? `Unable to save login session: ${error.message}`
+            : "Unable to save login session.",
+        );
+      }
+
+      // START 2026-11-11 12:59 IST - Test logs and /test route disabled; /test is not a registered screen.
+      // console.log("Login user data:", result.data.user);
+      // console.log("Folder received:", folder);
+      // router.replace(`/${folder}/test` as Href);
+      // END 2026-11-11 12:59 IST
+      router.replace(`/${folder}/all_register` as Href);
     } catch (error) {
-      Alert.alert(
-        "Login Failed",
-        error instanceof Error ? error.message : "Something went wrong.",
-      );
+      const message = error instanceof Error ? error.message : String(error);
+
+      if (Platform.OS === "web") {
+        window.alert(`Login Failed: ${message}`);
+      } else {
+        Alert.alert("Login Failed", message);
+      }
     }
   };
 
@@ -106,11 +120,6 @@ export default function LoginScreen() {
       "Please contact your company administrator to reset your password.",
     );
   };
-
-  // const handleChangeCompany = () => {
-  //   setConfirmCompanyChange(false);
-  //   router.replace("/company");
-  // };
 
   const handleChangeCompany = async () => {
     try {
@@ -165,11 +174,11 @@ export default function LoginScreen() {
 
             <View style={styles.companyRow}>
               <View style={styles.companyDetails}>
-                {/* <Text style={styles.companyLabel}>COMPANY</Text> */}
                 <Text numberOfLines={1} style={styles.companyName}>
                   {companyError ?? companyName}
                 </Text>
               </View>
+
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Change company"
@@ -207,7 +216,6 @@ export default function LoginScreen() {
 
             <View style={styles.passwordGroup}>
               <AppInput
-                // label="Password"
                 error={passwordError}
                 value={password}
                 onChangeText={(value) => {
@@ -309,6 +317,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+
   backgroundImage: {
     position: "absolute",
     top: 0,
