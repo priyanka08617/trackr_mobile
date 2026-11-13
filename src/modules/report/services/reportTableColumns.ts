@@ -121,7 +121,7 @@ export const REGISTER_TABLE_COLUMNS: Record<
     { data: "alert_status", title: "Alert Status" },
   ],
   exchange: [
-    ...location(),
+    ...location("Exchange Date"),
     { data: "total_gate_passes", title: "Total Gate Passes" },
     { data: "total_exchange_qty", title: "Total Exchange Quantity" },
     { data: "total_mrp_value", title: "Total MRP Value" },

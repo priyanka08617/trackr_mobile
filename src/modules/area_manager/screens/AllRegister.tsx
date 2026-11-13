@@ -87,7 +87,7 @@
 
 // ================================================================================================
 import { router } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
 
 const REGISTER_ITEMS = [
   { id: "alteration", title: "Alteration Report", icon: "setting" },
@@ -106,7 +106,7 @@ const REGISTER_ITEMS = [
 
 export default function AllRegister() {
   return (
-    <View style={{ flex: 1, padding: 20 }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
       <Text>All Register Working</Text>
 
       <Pressable
@@ -134,7 +134,40 @@ export default function AllRegister() {
       >
         <Text style={styles.buttonText}>All Tracker</Text>
       </Pressable>
-    </View>
+
+      <Pressable
+        style={styles.button}
+        onPress={() => router.push("/area_manager/work_plan_travel_plan")}
+      >
+        <Text style={styles.buttonText}>Work Plan Travel Plan</Text>
+      </Pressable>
+      <Pressable
+        style={styles.button}
+        onPress={() => router.push("/area_manager/rm_checklist")}
+      >
+        <Text style={styles.buttonText}>RM Checklist</Text>
+      </Pressable>
+      <Pressable
+        // accessibilityRole="button"
+        style={styles.button}
+        onPress={() => router.push("/area_manager/festive_checklist")}
+      >
+        <Text style={styles.buttonText}>Festive Checklist</Text>
+      </Pressable>
+      <Pressable
+        style={styles.button}
+        onPress={() => router.push("/area_manager/festive_checklist_report")}
+      >
+        <Text style={styles.buttonText}>Festive Checklist Report</Text>
+      </Pressable>
+
+      <Pressable
+        style={styles.button}
+        onPress={() => router.push("/area_manager/all_void")}
+      >
+        <Text style={styles.buttonText}>All Void</Text>
+      </Pressable>
+    </ScrollView>
   );
 
   // return (
