@@ -167,6 +167,31 @@ export default function AllRegister() {
       >
         <Text style={styles.buttonText}>All Void</Text>
       </Pressable>
+
+      <Pressable
+        style={styles.button}
+        onPress={() => router.push("/common/dump_report")}
+      >
+        <Text style={styles.buttonText}>Dump Report</Text>
+      </Pressable>
+      <Pressable
+        style={styles.button}
+        onPress={() => router.push("/common/monthly_lp_global_count")}
+      >
+        <Text style={styles.buttonText}>Monthly LP Report</Text>
+      </Pressable>
+      <Pressable
+        style={styles.button}
+        onPress={() => router.push("/area_manager/fascia_plan")}
+      >
+        <Text style={styles.buttonText}>Fascia Plan</Text>
+      </Pressable>
+      <Pressable
+        style={styles.button}
+        onPress={() => router.push("/common/fascia_report")}
+      >
+        <Text style={styles.buttonText}>Fascia Plan Report</Text>
+      </Pressable>
     </ScrollView>
   );
 

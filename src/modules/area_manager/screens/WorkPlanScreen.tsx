@@ -1,5 +1,9 @@
 import { AppButton } from "@/components/AppButton";
 import { AppLoader } from "@/components/AppLoader";
+import {
+  AreaHeaderBackContext,
+  AreaHeaderBackVisibleContext,
+} from "@/components/AreaHeaderBackContext";
 import AreaIcon from "@/components/AreaIcon";
 import { CARD, COLORS, SPACING } from "@/constants/theme";
 import { router } from "expo-router";
@@ -7,15 +11,17 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateField from "../../report/screens/DateField";
-import {
-  AreaHeaderBackContext,
-  AreaHeaderBackVisibleContext,
-} from "@/components/AreaHeaderBackContext";
-import DataTable, { type WorkPlanColumn } from "./WorkPlanTable";
 import { reportTableValue } from "../../report/services/reportTableFormat";
+import {
+  listPlans,
+  planRequest,
+  today,
+  validDate,
+  type Plan,
+} from "../../report/services/service";
 import ChecklistDialog, { type ChecklistNotice } from "./ChecklistDialog";
 import PlanForm from "./PlanForm";
-import { listPlans, planRequest, today, validDate, type Plan } from "../../report/services/service";
+import DataTable, { type WorkPlanColumn } from "./WorkPlanTable";
 
 type Tab = "new" | "unchecked" | "verified";
 export default function WorkPlanScreen() {
@@ -248,7 +254,7 @@ export default function WorkPlanScreen() {
     { title: "Plan Date", width: 140 },
     { title: "Zone", width: 140 },
     { title: "Region", width: 140 },
-    { title: "Area Manager", width: 180 },
+    // { title: "Area Manager", width: 180 },
     { title: "Planned Visit Location", width: 240 },
     { title: "Actual Visit Location", width: 240 },
     { title: "Actual Visit Date", width: 140 },
@@ -389,7 +395,7 @@ export default function WorkPlanScreen() {
             reportTableValue("date", item.date),
             item.zone || "All",
             item.region || "All",
-            item.manager || "-",
+            // item.manager || "-",
             item.plannedNames || "-",
             item.actualNames || "-",
             reportTableValue("date", item.actualDate),
