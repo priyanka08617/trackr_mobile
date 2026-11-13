@@ -64,15 +64,11 @@ export async function fetchCompanyFaqs(
     throw new Error("Authentication required. Please log in.");
   }
 
-  // STEP 3: Prepare company-specific API URL
   const apiBaseUrl = company.api_url.replace(/\/+$/, "") + "/";
-
   const endpoint = new URL("common/company_faq.php", apiBaseUrl);
-
   if (endpoint.protocol !== "https:") {
     throw new Error("A secure HTTPS API URL is required.");
   }
-
   endpoint.searchParams.set("category", "all");
 
   // STEP 4: Call PHP API

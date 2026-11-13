@@ -30,6 +30,10 @@ export default function ActionCard({
         <Image
           accessible={false}
           pointerEvents="none"
+<<<<<<< HEAD
+=======
+          // source={require("../../../../assets/images/icons/home-card-gradient.svg")}
+>>>>>>> origin/soumitra-dashboard-update
           source={require("../../assets/images/icons/home-card-gradient.svg")}
           contentFit="fill"
           style={styles.gradient}
