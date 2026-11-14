@@ -103,7 +103,8 @@ export default function Home() {
     return <AllTrackers onBack={goBackHome} />;
   }
   if (activeScreen === "festive_checklist") {
-    return <FestiveHomeRoute onBack={goBackHome} />;
+    // return <FestiveHomeRoute onBack={goBackHome} />;
+    return <FestiveHomeRoute />;
   }
 
   if (activeScreen === "escalation") {
