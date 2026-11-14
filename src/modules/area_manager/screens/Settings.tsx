@@ -58,7 +58,7 @@ const SETTINGS_ROUTES: Partial<Record<SettingsCardId, Href>> = {
   "monthly-lp": "/common/monthly_lp_global_count",
   "fascia-plan": "/area_manager/fascia_plan",
   "fascia-report": "/common/fascia_report",
-  // "ho-checklist": "/area_manager/ho_checklist",
+  "ho-checklist": "/area_manager/ho_checklist",
 };
 
 const CARD_ICONS: Record<SettingsCardId, AreaIconName> = {

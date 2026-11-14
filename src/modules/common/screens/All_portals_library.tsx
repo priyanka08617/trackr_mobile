@@ -121,9 +121,6 @@ export default function AllPortals({ onBack }: { onBack: () => void }) {
               <AreaIcon name="plan" color={COLORS.primary} size={35} />
             )}
 
-            <Text style={styles.name} numberOfLines={2}>
-              {item.name || "Unnamed portal"}
-            </Text>
           </Pressable>
         )}
         ListEmptyComponent={
