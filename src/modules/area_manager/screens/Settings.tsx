@@ -2,17 +2,12 @@ import { StatusBar } from "expo-status-bar";
 import { Alert, FlatList, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// import { AppButton } from "../src/components/AppButton";
-// import { COLORS, SPACING } from "../src/constants/theme";
-// import ActionCard from "./ActionCard";
-// import type { AreaIconName } from "./AreaIcon";
-
+import ActionCard from "@/components/ActionCard";
 import { AppButton } from "@/components/AppButton";
+import type { AreaIconName } from "@/components/AreaIcon";
 import { COLORS, SPACING } from "@/constants/theme";
-// import ActionCard from "../components/ActionCard";
-// import type { AreaIconName } from "../components/AreaIcon";
+import { router, type Href } from "expo-router";
 
-// Keep the order and labels from area_manager/views/setting.php.
 export const SETTINGS_CARDS = [
   {
     id: "void-list",
@@ -24,7 +19,12 @@ export const SETTINGS_CARDS = [
     title: "Festive Checklist",
     source: "festive_checklist_for_store_approval.php",
   },
-  { id: "wptp", title: "WPTP", source: "work_plan_travel_plan.php" },
+  {
+    id: "wptp",
+    title: "WPTP",
+    source: "work_plan_travel_plan.php",
+  },
+
   {
     id: "rm-checklist",
     title: "RM Checklist",
@@ -50,16 +50,27 @@ export const SETTINGS_CARDS = [
 
 export type SettingsCardId = (typeof SETTINGS_CARDS)[number]["id"];
 
-// const CARD_ICONS: Record<SettingsCardId, AreaIconName> = {
-//   "void-list": "ban",
-//   "festive-checklist": "gift",
-//   wptp: "calendar",
-//   "rm-checklist": "clipboard",
-//   "monthly-lp": "globe",
-//   "fascia-plan": "plan",
-//   "fascia-report": "report",
-//   "ho-checklist": "check",
-// };
+const SETTINGS_ROUTES: Partial<Record<SettingsCardId, Href>> = {
+  "void-list": "/area_manager/all_void",
+  "festive-checklist": "/area_manager/festive_checklist",
+  wptp: "/area_manager/work_plan_travel_plan",
+  "rm-checklist": "/area_manager/rm_checklist",
+  "monthly-lp": "/common/monthly_lp_global_count",
+  "fascia-plan": "/area_manager/fascia_plan",
+  "fascia-report": "/common/fascia_report",
+  // "ho-checklist": "/area_manager/ho_checklist",
+};
+
+const CARD_ICONS: Record<SettingsCardId, AreaIconName> = {
+  "void-list": "ban",
+  "festive-checklist": "gift",
+  wptp: "calendar",
+  "rm-checklist": "clipboard",
+  "monthly-lp": "globe",
+  "fascia-plan": "plan",
+  "fascia-report": "report",
+  "ho-checklist": "check",
+};
 
 export interface SettingsProps {
   embedded?: boolean;
@@ -73,15 +84,21 @@ export default function Settings({
   embedded = false,
 }: SettingsProps) {
   function openCard(card: (typeof SETTINGS_CARDS)[number]) {
-    const open = onOpenCard?.[card.id];
-    if (open) {
-      open();
+    const customOpen = onOpenCard?.[card.id];
+
+    if (customOpen) {
+      customOpen();
       return;
     }
-    Alert.alert(
-      card.title,
-      "This page has not been connected in the mobile app yet.",
-    );
+
+    const route = SETTINGS_ROUTES[card.id];
+
+    if (route) {
+      router.push(route);
+      return;
+    }
+
+    Alert.alert(card.title, "This page is not available yet.");
   }
 
   return (
@@ -112,12 +129,12 @@ export default function Settings({
         }
         renderItem={({ item }) => (
           <View style={styles.cell}>
-            {/* <ActionCard
+            <ActionCard
               filled
               title={item.title}
               icon={CARD_ICONS[item.id]}
               onPress={() => openCard(item)}
-            /> */}
+            />
           </View>
         )}
       />
@@ -127,8 +144,18 @@ export default function Settings({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.surface },
-  grid: { padding: 20, gap: SPACING.md, paddingBottom: SPACING.xxl },
+  grid: { padding: 10, gap: SPACING.md, paddingBottom: SPACING.md },
   row: { gap: SPACING.md },
   cell: { flex: 1, minWidth: 0 },
-  back: { alignSelf: "flex-start", minHeight: 44 },
+  back: { alignSelf: "flex-start", minHeight: 20 },
 });
+
+// ====================existing for backup=====
+
+// const styles = StyleSheet.create({
+//   screen: { flex: 1, backgroundColor: COLORS.surface },
+//   grid: { padding: 20, gap: SPACING.md, paddingBottom: SPACING.xxl },
+//   row: { gap: SPACING.md },
+//   cell: { flex: 1, minWidth: 0 },
+//   back: { alignSelf: "flex-start", minHeight: 44 },
+// });

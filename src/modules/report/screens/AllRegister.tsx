@@ -1,15 +1,15 @@
 import ActionCard from "@/components/ActionCard";
+import {
+  AreaHeaderBackContext,
+  AreaHeaderBackVisibleContext,
+  AreaHeaderTitleContext,
+} from "@/components/AreaHeaderBackContext";
 import AreaPage from "@/components/AreaPage";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import RegisterReportScreen, {
   type RegisterReportId,
 } from "./RegisterReportScreen";
-import {
-  AreaHeaderBackContext,
-  AreaHeaderBackVisibleContext,
-  AreaHeaderTitleContext,
-} from "@/components/AreaHeaderBackContext";
 
 const REGISTER_ITEMS = [
   { id: "alteration", title: "Alteration Report", icon: "setting" },
@@ -62,6 +62,7 @@ export default function AllRegister({ onBack }: { onBack?: () => void }) {
     <AreaPage
       title="All Register"
       subtitle="Access all store registers and daily reports."
+      compact
     >
       <View style={styles.grid}>
         {REGISTER_ITEMS.map((item) => (

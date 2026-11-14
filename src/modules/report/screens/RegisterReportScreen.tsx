@@ -1,33 +1,38 @@
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
+import AreaIcon from "@/components/AreaIcon";
+import AreaPage from "@/components/AreaPage";
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
+import { getAuthToken } from "@/storage/authStorage";
+import { getSavedCompany } from "@/storage/companyStorage";
 import { DateTimePicker } from "@expo/ui/community/datetime-picker";
 import { Directory, File, Paths } from "expo-file-system";
 import { useEffect, useState } from "react";
 import {
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    useWindowDimensions,
+    View,
 } from "react-native";
-import { getAuthToken } from "@/storage/authStorage";
-import { getSavedCompany } from "@/storage/companyStorage";
-import {
-  REGISTER_TABLE_COLUMNS,
-  staticReportCells,
-} from "../services/reportTableColumns";
-import AreaIcon from "@/components/AreaIcon";
-import AreaPage from "@/components/AreaPage";
+import DateField from "../../../components/DateField";
+import SelectField, {
+    type SelectOption,
+} from "../../../components/SelectField";
 import { loadLocationFilterOptions } from "../services/locationFilters";
 import { prepareReportCsv } from "../services/reportCsv";
-import { exceedsTableDateRange, tableDateRange } from "../services/reportDateRange";
-import SelectField, { type SelectOption } from "./SelectField";
+import {
+    exceedsTableDateRange,
+    tableDateRange,
+} from "../services/reportDateRange";
+import {
+    REGISTER_TABLE_COLUMNS,
+    staticReportCells,
+} from "../services/reportTableColumns";
 import { isPickerCancellation } from "../services/trackerText";
-import DateField from "./DateField";
 
 const REPORTS = {
   alteration: {

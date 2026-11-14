@@ -1,12 +1,12 @@
 import {
-    ActivityIndicator,
-    Pressable,
-    StyleSheet,
-    Text,
-    type PressableProps,
-    type StyleProp,
-    type TextStyle,
-    type ViewStyle,
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  type PressableProps,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
 } from "react-native";
 
 import { BUTTON, COLORS } from "@/constants/theme";
@@ -19,6 +19,7 @@ export interface AppButtonProps extends Omit<
 > {
   title: string;
   variant?: ButtonVariant;
+  // size?: "sm" | "md" | "lg";
   loading?: boolean;
   textStyle?: StyleProp<TextStyle>;
   style?: StyleProp<ViewStyle>;
@@ -93,10 +94,20 @@ export function AppButton({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: BUTTON.height,
+    // minHeight: BUTTON.height,
+    // borderWidth: 1,
+    // borderRadius: BUTTON.borderRadius,
+    // paddingHorizontal: BUTTON.paddingHorizontal,
+    // alignItems: "center",
+    // justifyContent: "center",
+
+    // ==================
+
+    minHeight: 32,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderWidth: 1,
     borderRadius: BUTTON.borderRadius,
-    paddingHorizontal: BUTTON.paddingHorizontal,
     alignItems: "center",
     justifyContent: "center",
   },

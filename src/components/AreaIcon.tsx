@@ -4,7 +4,7 @@ import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { Platform } from "react-native";
 
 const ICONS = {
-  dashboard: { ios: "square.grid.2x2", fa: "th-large" },
+  dashboard: { ios: "speedometer", fa: "tachometer-alt" },
   home: { ios: "house", fa: "home" },
   setting: { ios: "gearshape", fa: "cog" },
   faq: { ios: "questionmark.circle", fa: "question-circle" },

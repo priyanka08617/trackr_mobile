@@ -2,19 +2,19 @@ import { AppButton } from "@/components/AppButton";
 import { AppLoader } from "@/components/AppLoader";
 import AreaPage from "@/components/AreaPage";
 import {
-  CARD,
-  COLORS,
-  FONT_SIZE,
-  FONT_WEIGHT,
-  SPACING,
+    CARD,
+    COLORS,
+    FONT_SIZE,
+    FONT_WEIGHT,
+    SPACING,
 } from "@/constants/theme";
 import { router, useLocalSearchParams } from "expo-router";
 import { useContext, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import SelectField from "../../report/screens/SelectField";
+import SelectField from "../../../components/SelectField";
 import {
-  AreaHeaderBackContext,
-  AreaHeaderBackVisibleContext,
+    AreaHeaderBackContext,
+    AreaHeaderBackVisibleContext,
 } from "../../report/services/AreaHeaderBackContext";
 import { useRmChecklistData } from "./DataContext";
 
@@ -34,9 +34,12 @@ export default function ChecklistDetails() {
   const { code } = useLocalSearchParams<{ code?: string | string[] }>();
   const selectedCode = Array.isArray(code) ? code[0] : code;
   const { records, loading, error, onLoadDetails } = useRmChecklistData();
-  const hasSelectedRecord = records.some((record) => record.code === selectedCode);
+  const hasSelectedRecord = records.some(
+    (record) => record.code === selectedCode,
+  );
   useEffect(() => {
-    if (selectedCode && hasSelectedRecord && onLoadDetails) void onLoadDetails(selectedCode);
+    if (selectedCode && hasSelectedRecord && onLoadDetails)
+      void onLoadDetails(selectedCode);
   }, [selectedCode, hasSelectedRecord, onLoadDetails]);
   const [page, setPage] = useState(1);
   const [collapsed, setCollapsed] = useState<string[]>([]);

@@ -5,12 +5,12 @@ import {
   AreaHeaderBackVisibleContext,
 } from "@/components/AreaHeaderBackContext";
 import AreaIcon from "@/components/AreaIcon";
+import DateField from "@/components/DateField";
 import { CARD, COLORS, SPACING } from "@/constants/theme";
 import { router } from "expo-router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import DateField from "../../report/screens/DateField";
 import { reportTableValue } from "../../report/services/reportTableFormat";
 import {
   listPlans,

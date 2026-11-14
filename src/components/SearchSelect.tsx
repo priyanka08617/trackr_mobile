@@ -234,8 +234,9 @@ const styles = StyleSheet.create({
   error: { color: COLORS.danger, fontSize: 13 },
   field: { gap: 4 },
   label: { fontSize: 14, fontWeight: "500", color: COLORS.text },
+
   control: {
-    minHeight: 48,
+    minHeight: 36,
     borderWidth: 1,
     borderColor: "#aaa",
     borderRadius: 5,
@@ -244,9 +245,10 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     alignItems: "center",
     paddingHorizontal: 6,
-    paddingVertical: 4,
+    paddingVertical: 0,
     gap: 5,
   },
+
   focused: { borderColor: COLORS.primary },
   disabled: { opacity: 0.5, backgroundColor: "#eee" },
   trigger: {
@@ -254,9 +256,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     flexGrow: 1,
-    minHeight: 38,
+    minHeight: 34,
     paddingHorizontal: 6,
-    gap: 12,
+    gap: 8,
   },
   selection: { flexShrink: 1, color: COLORS.text, fontSize: 14 },
   placeholder: { color: COLORS.textLight },

@@ -40,11 +40,11 @@ import AreaIcon from "./AreaIcon";
 // ] as const;
 
 export const AREA_NAVIGATION = [
-  // { title: "Dashboard", href: "/common/dashboard", icon: "dashboard" },
+  { title: "Dashboard", href: "/common/dashboard", icon: "dashboard" },
   { title: "Home", href: "/common/home", icon: "home" },
-  // { title: "Settings", href: "/areamanger/setting", icon: "setting" },
+  { title: "Settings", href: "/area_manager/settings", icon: "setting" },
   // { title: "Company FAQs", href: "/areamanger/company-faq", icon: "faq" },
-  // { title: "Report", href: "/areamanger/report", icon: "report" },
+  { title: "Report", href: "/common/dump_report", icon: "report" },
 ] as const;
 
 // const PAGE_TITLES: Record<string, string> = {
@@ -53,12 +53,12 @@ export const AREA_NAVIGATION = [
 // };
 
 const PAGE_TITLES: Record<string, string> = {
-  // "/areamanger": "Dashboard",
-  // "/areamanger/dashboard": "Dashboard",
+  // "/area_manager": "Dashboard",
+  "/common/dashboard": "Dashboard",
   "/common/home": "Home",
-  // "/areamanger/setting": "Settings",
+  "/area_manager/setting": "Settings",
   // "/areamanger/company-faq": "Company FAQs",
-  // "/areamanger/report": "Reports",
+  "/common/dump_report": "Reports",
   // "/areamanger/all-portals": "All Portals Library",
   // "/areamanger/report-bank": "Reports Bank",
   // "/areamanger/festive-checklist": "Festive Checklist",

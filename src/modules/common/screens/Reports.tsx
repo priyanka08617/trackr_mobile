@@ -4,7 +4,7 @@ import AreaPage from "@/components/AreaPage";
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
 import { useState } from "react";
 import { Modal, ScrollView, StyleSheet, Text, View } from "react-native";
-import DateField from "../../report/screens/DateField";
+import DateField from "../../../components/DateField";
 import { today } from "../../report/services/service";
 
 export const REPORTS = [

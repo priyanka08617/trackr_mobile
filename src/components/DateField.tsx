@@ -1,10 +1,10 @@
+import { AppButton } from "@/components/AppButton";
+import { AppInput } from "@/components/AppInput";
+import AreaIcon from "@/components/AreaIcon";
+import { COLORS, SPACING } from "@/constants/theme";
 import { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import { AppInput } from "@/components/AppInput";
-import { AppButton } from "@/components/AppButton";
-import { COLORS, SPACING } from "@/constants/theme";
-import AreaIcon from "@/components/AreaIcon";
-import { today, validDate } from "../services/service";
+import { today, validDate } from "../modules/report/services/service";
 
 function dateString(year: number, month: number, day: number) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -201,15 +201,36 @@ export default function DateField({
     </View>
   );
 }
+
 const styles = StyleSheet.create({
-  compactInput: { fontSize: 12, paddingHorizontal: 6 },
-  compactCalendar: { width: 36 },
-  label: { color: COLORS.text, fontSize: 14, fontWeight: "500" },
-  inputRow: { flexDirection: "row", alignItems: "stretch" },
-  input: { flex: 1 },
+  compactInput: {
+    fontSize: 12,
+    paddingHorizontal: 6,
+  },
+
+  compactCalendar: {
+    width: 36,
+  },
+
+  label: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+  },
+
+  input: {
+    flex: 1,
+  },
+
   calendarButton: {
-    width: 48,
-    minHeight: 48,
+    width: 36,
+    height: 36,
+    minHeight: 36,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#f0f0f0",
@@ -218,6 +239,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginLeft: 4,
   },
+
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
@@ -265,3 +287,68 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
 });
+
+// const styles = StyleSheet.create({
+//   compactInput: { fontSize: 12, paddingHorizontal: 6 },
+//   compactCalendar: { width: 36 },
+//   label: { color: COLORS.text, fontSize: 14, fontWeight: "500" },
+//   inputRow: { flexDirection: "row", alignItems: "stretch" },
+//   input: { flex: 1 },
+//   calendarButton: {
+//     width: 48,
+//     minHeight: 48,
+//     alignItems: "center",
+//     justifyContent: "center",
+//     backgroundColor: "#f0f0f0",
+//     borderWidth: 1,
+//     borderColor: COLORS.border,
+//     borderRadius: 6,
+//     marginLeft: 4,
+//   },
+//   overlay: {
+//     flex: 1,
+//     backgroundColor: "rgba(0,0,0,0.4)",
+//     justifyContent: "center",
+//     alignItems: "center",
+//     padding: 16,
+//   },
+//   calendar: {
+//     width: "100%",
+//     maxWidth: 370,
+//     padding: 12,
+//     borderRadius: 12,
+//     backgroundColor: COLORS.white,
+//     gap: SPACING.md,
+//   },
+//   monthRow: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     justifyContent: "space-between",
+//   },
+//   month: { color: COLORS.primary, fontWeight: "600", fontSize: 17 },
+//   monthButton: {
+//     minWidth: 44,
+//     minHeight: 44,
+//     alignItems: "center",
+//     justifyContent: "center",
+//   },
+//   arrow: { color: COLORS.primary, fontSize: 28 },
+//   grid: { flexDirection: "row", flexWrap: "wrap" },
+//   cell: {
+//     width: "14.2857%",
+//     minHeight: 44,
+//     justifyContent: "center",
+//     alignItems: "center",
+//     borderRadius: 6,
+//   },
+//   selected: { backgroundColor: COLORS.primary },
+//   disabled: { opacity: 0.3 },
+//   weekday: { color: COLORS.textLight, fontWeight: "600" },
+//   day: { color: COLORS.text, fontSize: 15 },
+//   selectedText: { color: COLORS.white },
+//   actions: {
+//     flexDirection: "row",
+//     justifyContent: "space-between",
+//     gap: SPACING.sm,
+//   },
+// });

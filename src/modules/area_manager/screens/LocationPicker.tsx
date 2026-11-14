@@ -1,4 +1,4 @@
-import SearchSelect from "../../report/screens/SearchSelect";
+import SearchSelect from "../../../components/SearchSelect";
 import type { LocationOption } from "../../report/services/service";
 
 export default function LocationPicker({

@@ -1,19 +1,19 @@
 import {
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-    type StyleProp,
-    type TextInputProps,
-    type ViewStyle,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type StyleProp,
+  type TextInputProps,
+  type ViewStyle,
 } from "react-native";
 
 import {
-    COLORS,
-    FONT_SIZE,
-    FONT_WEIGHT,
-    INPUT,
-    SPACING,
+  COLORS,
+  FONT_SIZE,
+  FONT_WEIGHT,
+  INPUT,
+  SPACING,
 } from "@/constants/theme";
 
 export interface AppInputProps extends TextInputProps {
@@ -66,13 +66,25 @@ const styles = StyleSheet.create({
     fontWeight: FONT_WEIGHT.medium,
   },
   input: {
-    minHeight: INPUT.height,
+    // minHeight: INPUT.height,
+    // borderWidth: INPUT.borderWidth,
+    // borderColor: INPUT.borderColor,
+    // borderRadius: INPUT.borderRadius,
+    // backgroundColor: INPUT.backgroundColor,
+    // color: INPUT.textColor,
+    // paddingHorizontal: INPUT.paddingHorizontal,
+    // fontSize: INPUT.fontSize,
+
+    // =================================
+
+    minHeight: 36,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderWidth: INPUT.borderWidth,
     borderColor: INPUT.borderColor,
     borderRadius: INPUT.borderRadius,
     backgroundColor: INPUT.backgroundColor,
     color: INPUT.textColor,
-    paddingHorizontal: INPUT.paddingHorizontal,
     fontSize: INPUT.fontSize,
   },
   disabled: {

@@ -1,48 +1,67 @@
-import { router } from "expo-router";
-import { memo, useCallback, useContext, useEffect, useRef, useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
 import { AppLoader } from "@/components/AppLoader";
 import {
-  CARD,
-  COLORS,
-  FONT_SIZE,
-  FONT_WEIGHT,
-  SPACING,
+    CARD,
+    COLORS,
+    FONT_SIZE,
+    FONT_WEIGHT,
+    SPACING,
 } from "@/constants/theme";
-import { useRmChecklistData, type RmChecklistData } from "./DataContext";
+import { router } from "expo-router";
 import {
-  getAnswerError,
-  getScore,
-  todayForChecklist,
-  type RmAnswer,
-  type RmDraft,
-  type RmQuestion,
+    memo,
+    useCallback,
+    useContext,
+    useEffect,
+    useRef,
+    useState,
+} from "react";
+import {
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import SelectField from "../../../components/SelectField";
+import {
+    AreaHeaderActionContext,
+    AreaHeaderBackContext,
+} from "../../report/services/AreaHeaderBackContext";
+import {
+    getAnswerError,
+    getScore,
+    todayForChecklist,
+    type RmAnswer,
+    type RmDraft,
+    type RmQuestion,
 } from "../services/model";
-import SelectField from "../../report/screens/SelectField";
 import ChecklistDialog, { type ChecklistNotice } from "./ChecklistDialog";
-import { AreaHeaderActionContext, AreaHeaderBackContext } from "../../report/services/AreaHeaderBackContext";
+import { useRmChecklistData, type RmChecklistData } from "./DataContext";
 
 type FormAction = "submit" | "draft" | "remove" | "leave";
 type FilterChange = { kind: "region" | "zone" | "store"; value: string };
 
 export default function ChecklistForm() {
   const data = useRmChecklistData("form");
-  if (data.initialized === false) return <View style={styles.content}>
-    {data.loading ? <AppLoader message="Loading RM checklist…" /> : <>
-      <Text accessibilityRole="alert" style={styles.error}>{data.error}</Text>
-      <AppButton title="Retry" onPress={data.onRefresh} />
-    </>}
-  </View>;
+  if (data.initialized === false)
+    return (
+      <View style={styles.content}>
+        {data.loading ? (
+          <AppLoader message="Loading RM checklist…" />
+        ) : (
+          <>
+            <Text accessibilityRole="alert" style={styles.error}>
+              {data.error}
+            </Text>
+            <AppButton title="Retry" onPress={data.onRefresh} />
+          </>
+        )}
+      </View>
+    );
   return <ChecklistFormContent data={data} />;
 }
 
@@ -130,57 +149,74 @@ function ChecklistFormContent({ data }: { data: RmChecklistData }) {
     else applyFilter(change);
   }
 
-  const update = useCallback((question: RmQuestion, patch: Partial<RmAnswer>) => {
-    setAnswers((current) => {
-      const old = current.find((answer) => answer.questionId === question.id) ?? {
-        questionId: question.id, rating: "", reason: "", remark: "",
-      };
-      const next = { ...old, ...patch };
-      if (patch.rating !== undefined) { next.reason = ""; next.remark = ""; }
-      return [...current.filter((answer) => answer.questionId !== question.id), next];
-    });
-  }, []);
+  const update = useCallback(
+    (question: RmQuestion, patch: Partial<RmAnswer>) => {
+      setAnswers((current) => {
+        const old = current.find(
+          (answer) => answer.questionId === question.id,
+        ) ?? {
+          questionId: question.id,
+          rating: "",
+          reason: "",
+          remark: "",
+        };
+        const next = { ...old, ...patch };
+        if (patch.rating !== undefined) {
+          next.reason = "";
+          next.remark = "";
+        }
+        return [
+          ...current.filter((answer) => answer.questionId !== question.id),
+          next,
+        ];
+      });
+    },
+    [],
+  );
 
-  const request = useCallback((action: FormAction) => {
-    setError(undefined);
-    if (action === "leave" && !dirty) {
-      router.replace("/area_manager/rm_checklist");
-      return;
-    }
-    if (action === "submit" || action === "draft") {
-      setValidation(true);
-      if (!storeId || !data.stores.some((store) => store.id === storeId)) {
-        setError("Please select a store.");
+  const request = useCallback(
+    (action: FormAction) => {
+      setError(undefined);
+      if (action === "leave" && !dirty) {
+        router.replace("/area_manager/rm_checklist");
         return;
       }
-      if (!data.questions.length) {
-        setError("No check parameters are available yet.");
-        return;
+      if (action === "submit" || action === "draft") {
+        setValidation(true);
+        if (!storeId || !data.stores.some((store) => store.id === storeId)) {
+          setError("Please select a store.");
+          return;
+        }
+        if (!data.questions.length) {
+          setError("No check parameters are available yet.");
+          return;
+        }
+        const checked =
+          action === "submit"
+            ? data.questions
+            : data.questions.filter((question) =>
+                answers.some((answer) => answer.questionId === question.id),
+              );
+        if (!checked.length) {
+          setError("Complete at least one check parameter.");
+          return;
+        }
+        if (
+          checked.some((question) =>
+            getAnswerError(
+              question,
+              answers.find((answer) => answer.questionId === question.id),
+            ),
+          )
+        ) {
+          setError("Complete the required rating, reason and remark fields.");
+          return;
+        }
       }
-      const checked =
-        action === "submit"
-          ? data.questions
-          : data.questions.filter((question) =>
-              answers.some((answer) => answer.questionId === question.id),
-            );
-      if (!checked.length) {
-        setError("Complete at least one check parameter.");
-        return;
-      }
-      if (
-        checked.some((question) =>
-          getAnswerError(
-            question,
-            answers.find((answer) => answer.questionId === question.id),
-          ),
-        )
-      ) {
-        setError("Complete the required rating, reason and remark fields.");
-        return;
-      }
-    }
-    setConfirmation(action);
-  }, [dirty, storeId, data.stores, data.questions, answers]);
+      setConfirmation(action);
+    },
+    [dirty, storeId, data.stores, data.questions, answers],
+  );
 
   useEffect(() => {
     if (!headerBackHandlerRef) return;
@@ -193,8 +229,17 @@ function ChecklistFormContent({ data }: { data: RmChecklistData }) {
   }, [headerBackHandlerRef, request, busy]);
   const hasDraft = Boolean(data.draft || savedAnswers.length > 0);
   useEffect(() => {
-    setHeaderAction(hasDraft ? <AppButton title="Delete Draft" variant="danger" disabled={busy}
-      style={{ minHeight: 44, paddingHorizontal: SPACING.sm }} onPress={() => request("remove")} /> : null);
+    setHeaderAction(
+      hasDraft ? (
+        <AppButton
+          title="Delete Draft"
+          variant="danger"
+          disabled={busy}
+          style={{ minHeight: 44, paddingHorizontal: SPACING.sm }}
+          onPress={() => request("remove")}
+        />
+      ) : null,
+    );
     return () => setHeaderAction(null);
   }, [setHeaderAction, hasDraft, busy, request]);
 
@@ -239,12 +284,35 @@ function ChecklistFormContent({ data }: { data: RmChecklistData }) {
       }
       const submitted = confirmation === "submit";
       setConfirmation(null);
-      setNotice({ kind: "success", title: submitted ? "Submitted" : confirmation === "remove" ? "Removed" : "Saved",
-        message: submitted ? "Checklist submitted successfully." : confirmation === "remove" ? "Draft removed successfully." : "Draft saved successfully.", returnToList: submitted });
+      setNotice({
+        kind: "success",
+        title: submitted
+          ? "Submitted"
+          : confirmation === "remove"
+            ? "Removed"
+            : "Saved",
+        message: submitted
+          ? "Checklist submitted successfully."
+          : confirmation === "remove"
+            ? "Draft removed successfully."
+            : "Draft saved successfully.",
+        returnToList: submitted,
+      });
     } catch (cause) {
       setConfirmation(null);
-      setNotice({ kind: "error", title: confirmation === "submit" ? "Submission failed" : confirmation === "remove" ? "Draft not removed" : "Draft not saved",
-        message: cause instanceof Error ? cause.message : "Unable to save. Please try again." });
+      setNotice({
+        kind: "error",
+        title:
+          confirmation === "submit"
+            ? "Submission failed"
+            : confirmation === "remove"
+              ? "Draft not removed"
+              : "Draft not saved",
+        message:
+          cause instanceof Error
+            ? cause.message
+            : "Unable to save. Please try again.",
+      });
     } finally {
       setBusy(false);
     }
@@ -373,13 +441,24 @@ function ChecklistFormContent({ data }: { data: RmChecklistData }) {
               {!collapsed.includes(group) &&
                 data.questions
                   .filter((question) => question.category === group)
-                  .map((question, index) => <ChecklistQuestionRow
-                    key={question.id} question={question} index={index}
-                    answer={answers.find((answer) => answer.questionId === question.id)}
-                    saved={savedAnswers.find((answer) => answer.questionId === question.id)}
-                    previousRating={previous?.ratings[question.id]}
-                    storeId={storeId} busy={busy} validation={validation} onUpdate={update}
-                  />)}
+                  .map((question, index) => (
+                    <ChecklistQuestionRow
+                      key={question.id}
+                      question={question}
+                      index={index}
+                      answer={answers.find(
+                        (answer) => answer.questionId === question.id,
+                      )}
+                      saved={savedAnswers.find(
+                        (answer) => answer.questionId === question.id,
+                      )}
+                      previousRating={previous?.ratings[question.id]}
+                      storeId={storeId}
+                      busy={busy}
+                      validation={validation}
+                      onUpdate={update}
+                    />
+                  ))}
             </View>
           ))}
         </ScrollView>
@@ -409,101 +488,167 @@ function ChecklistFormContent({ data }: { data: RmChecklistData }) {
                 style={[styles.halfButton, styles.themeButton]}
               />
             </View>
-
           </View>
         </View>
       </KeyboardAvoidingView>
-      <ChecklistDialog visible={Boolean(confirmation || filterChange)} busy={busy}
-        title={filterChange ? "Change store selection?" : confirmation === "remove" ? "Remove draft?" : confirmation === "leave" ? "Discard unsaved changes?" : "Are you sure?"}
-        message={filterChange ? "Changing Region, Zone or Store clears the answers in this form." : confirmation === "submit" ? "Do you want to submit this checklist?" : confirmation === "draft" ? "Do you want to save this checklist as a draft?" : confirmation === "remove" ? "All of your saved draft checklist data will be deleted." : "Your unsaved changes will be lost."}
-        confirmText={filterChange ? "Yes, Change" : confirmation === "submit" ? "Yes, Submit" : confirmation === "draft" ? "Yes, Save" : confirmation === "remove" ? "Yes, Remove" : "Yes, Discard"}
+      <ChecklistDialog
+        visible={Boolean(confirmation || filterChange)}
+        busy={busy}
+        title={
+          filterChange
+            ? "Change store selection?"
+            : confirmation === "remove"
+              ? "Remove draft?"
+              : confirmation === "leave"
+                ? "Discard unsaved changes?"
+                : "Are you sure?"
+        }
+        message={
+          filterChange
+            ? "Changing Region, Zone or Store clears the answers in this form."
+            : confirmation === "submit"
+              ? "Do you want to submit this checklist?"
+              : confirmation === "draft"
+                ? "Do you want to save this checklist as a draft?"
+                : confirmation === "remove"
+                  ? "All of your saved draft checklist data will be deleted."
+                  : "Your unsaved changes will be lost."
+        }
+        confirmText={
+          filterChange
+            ? "Yes, Change"
+            : confirmation === "submit"
+              ? "Yes, Submit"
+              : confirmation === "draft"
+                ? "Yes, Save"
+                : confirmation === "remove"
+                  ? "Yes, Remove"
+                  : "Yes, Discard"
+        }
         cancelText={confirmation === "submit" ? "No" : "Cancel"}
-        onConfirm={() => { if (filterChange) applyFilter(filterChange); else void perform(); }}
-        onCancel={() => { setConfirmation(null); setFilterChange(null); setError(undefined); }} />
-      <ChecklistDialog visible={Boolean(notice)} title={notice?.title ?? ""} message={notice?.message ?? ""} kind={notice?.kind}
-        onConfirm={() => { const returnToList = notice?.returnToList; setNotice(undefined); if (returnToList) router.replace("/area_manager/rm_checklist"); }} />
+        onConfirm={() => {
+          if (filterChange) applyFilter(filterChange);
+          else void perform();
+        }}
+        onCancel={() => {
+          setConfirmation(null);
+          setFilterChange(null);
+          setError(undefined);
+        }}
+      />
+      <ChecklistDialog
+        visible={Boolean(notice)}
+        title={notice?.title ?? ""}
+        message={notice?.message ?? ""}
+        kind={notice?.kind}
+        onConfirm={() => {
+          const returnToList = notice?.returnToList;
+          setNotice(undefined);
+          if (returnToList) router.replace("/area_manager/rm_checklist");
+        }}
+      />
     </SafeAreaView>
   );
 }
 
 const ChecklistQuestionRow = memo(function ChecklistQuestionRow({
-  question, index, answer, saved, previousRating, storeId, busy, validation, onUpdate,
+  question,
+  index,
+  answer,
+  saved,
+  previousRating,
+  storeId,
+  busy,
+  validation,
+  onUpdate,
 }: {
-  question: RmQuestion; index: number; answer?: RmAnswer; saved?: RmAnswer;
-  previousRating?: string; storeId: string; busy: boolean; validation: boolean;
+  question: RmQuestion;
+  index: number;
+  answer?: RmAnswer;
+  saved?: RmAnswer;
+  previousRating?: string;
+  storeId: string;
+  busy: boolean;
+  validation: boolean;
   onUpdate: (question: RmQuestion, patch: Partial<RmAnswer>) => void;
 }) {
-  const reasonRequired = Boolean(answer?.rating && answer.rating === question.chooseCompliance);
-  const rowSaved = answer && saved && JSON.stringify(answer) === JSON.stringify(saved);
+  const reasonRequired = Boolean(
+    answer?.rating && answer.rating === question.chooseCompliance,
+  );
+  const rowSaved =
+    answer && saved && JSON.stringify(answer) === JSON.stringify(saved);
   return (
-                      <View key={question.id} style={styles.question}>
-                        <View style={styles.questionTop}>
-                          <Text style={styles.number}>#{index + 1}</Text>
-                          <Text
-                            style={[
-                              styles.saveStatus,
-                              {
-                                color: rowSaved
-                                  ? COLORS.success
-                                  : COLORS.textLight,
-                              },
-                            ]}
-                          >
-                            {rowSaved ? "Saved" : "Not Saved"}
-                          </Text>
-                        </View>
-                        <Text style={styles.parameter}>{question.text}</Text>
-                        <SelectField
-                          label="Rating" presentation="modal" disabledReason={!storeId ? "Select a store first to choose a rating." : undefined}
-                          value={answer?.rating ?? ""}
-                          disabled={!storeId || busy}
-                          options={question.ratings.map((rating) => ({
-                            value: rating.label,
-                            label: rating.label,
-                          }))}
-                          onChange={(rating) => onUpdate(question, { rating })}
-                        />
-                        {previousRating && (
-                          <Text style={styles.previous}>
-                            Prev: {previousRating}
-                          </Text>
-                        )}
-                        <SelectField
-                          label="Why" presentation="modal" disabledReason={!storeId ? "Select a store first." : !answer?.rating ? "Choose a rating first." : undefined}
-                          value={answer?.reason ?? ""}
-                          disabled={!reasonRequired || busy}
-                          placeholder={
-                            reasonRequired ? "Select Reason" : "No Reason"
-                          }
-                          options={question.reasons.map((reason) => ({
-                            value: reason,
-                            label: reason,
-                          }))}
-                          onChange={(reason) => onUpdate(question, { reason })}
-                        />
-                        <AppInput
-                          label="Remark"
-                          multiline
-                          numberOfLines={3}
-                          value={answer?.remark ?? ""}
-                          editable={reasonRequired && !busy}
-                          style={styles.remark}
-                          onChangeText={(remark) =>
-                            onUpdate(question, { remark })
-                          }
-                        />
-                        {reasonRequired && (
-                          <Text style={styles.hint}>
-                            {answer?.remark.trim().length ?? 0} / 60 characters
-                            minimum
-                          </Text>
-                        )}
-                        {validation && getAnswerError(question, answer) && (
-                          <Text accessibilityRole="alert" style={styles.error}>
-                            {getAnswerError(question, answer)}
-                          </Text>
-                        )}
-                      </View>
+    <View key={question.id} style={styles.question}>
+      <View style={styles.questionTop}>
+        <Text style={styles.number}>#{index + 1}</Text>
+        <Text
+          style={[
+            styles.saveStatus,
+            {
+              color: rowSaved ? COLORS.success : COLORS.textLight,
+            },
+          ]}
+        >
+          {rowSaved ? "Saved" : "Not Saved"}
+        </Text>
+      </View>
+      <Text style={styles.parameter}>{question.text}</Text>
+      <SelectField
+        label="Rating"
+        presentation="modal"
+        disabledReason={
+          !storeId ? "Select a store first to choose a rating." : undefined
+        }
+        value={answer?.rating ?? ""}
+        disabled={!storeId || busy}
+        options={question.ratings.map((rating) => ({
+          value: rating.label,
+          label: rating.label,
+        }))}
+        onChange={(rating) => onUpdate(question, { rating })}
+      />
+      {previousRating && (
+        <Text style={styles.previous}>Prev: {previousRating}</Text>
+      )}
+      <SelectField
+        label="Why"
+        presentation="modal"
+        disabledReason={
+          !storeId
+            ? "Select a store first."
+            : !answer?.rating
+              ? "Choose a rating first."
+              : undefined
+        }
+        value={answer?.reason ?? ""}
+        disabled={!reasonRequired || busy}
+        placeholder={reasonRequired ? "Select Reason" : "No Reason"}
+        options={question.reasons.map((reason) => ({
+          value: reason,
+          label: reason,
+        }))}
+        onChange={(reason) => onUpdate(question, { reason })}
+      />
+      <AppInput
+        label="Remark"
+        multiline
+        numberOfLines={3}
+        value={answer?.remark ?? ""}
+        editable={reasonRequired && !busy}
+        style={styles.remark}
+        onChangeText={(remark) => onUpdate(question, { remark })}
+      />
+      {reasonRequired && (
+        <Text style={styles.hint}>
+          {answer?.remark.trim().length ?? 0} / 60 characters minimum
+        </Text>
+      )}
+      {validation && getAnswerError(question, answer) && (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {getAnswerError(question, answer)}
+        </Text>
+      )}
+    </View>
   );
 });
 
