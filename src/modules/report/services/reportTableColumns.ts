@@ -75,7 +75,7 @@ export const REGISTER_TABLE_COLUMNS: Record<
     },
     {
       data: "total_qty_received",
-      title: "Total Quantity Received",
+      title: "Total Qty Received",
       aliases: ["TotalQtyReceived"],
     },
     {

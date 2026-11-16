@@ -26,7 +26,7 @@ export default function SelectField({
 }) {
   return (
     <SearchSelect
-      label={label}
+      label={label?.trim() || ""}
       value={value ? [value] : []}
       options={options}
       onChange={(values) => onChange(values[0] ?? "")}
