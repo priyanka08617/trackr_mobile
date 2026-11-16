@@ -66,26 +66,16 @@ const styles = StyleSheet.create({
     fontWeight: FONT_WEIGHT.medium,
   },
   input: {
-    // minHeight: INPUT.height,
-    // borderWidth: INPUT.borderWidth,
-    // borderColor: INPUT.borderColor,
-    // borderRadius: INPUT.borderRadius,
-    // backgroundColor: INPUT.backgroundColor,
-    // color: INPUT.textColor,
-    // paddingHorizontal: INPUT.paddingHorizontal,
-    // fontSize: INPUT.fontSize,
-
-    // =================================
-
-    minHeight: 36,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    minHeight: INPUT.height,
     borderWidth: INPUT.borderWidth,
     borderColor: INPUT.borderColor,
     borderRadius: INPUT.borderRadius,
     backgroundColor: INPUT.backgroundColor,
     color: INPUT.textColor,
+    paddingHorizontal: INPUT.paddingHorizontal,
     fontSize: INPUT.fontSize,
+
+    // =================================
   },
   disabled: {
     backgroundColor: COLORS.surface,

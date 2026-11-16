@@ -40,7 +40,7 @@ import AreaIcon from "./AreaIcon";
 // ] as const;
 
 export const AREA_NAVIGATION = [
-  { title: "Dashboard", href: "/common/dashboard", icon: "dashboard" },
+  { title: "Dashboard", href: "/area_manager/dashboard", icon: "dashboard" },
   { title: "Home", href: "/common/home", icon: "home" },
   { title: "Settings", href: "/area_manager/settings", icon: "setting" },
   // { title: "Company FAQs", href: "/areamanger/company-faq", icon: "faq" },

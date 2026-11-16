@@ -139,6 +139,7 @@ function Calendar({
     </Modal>
   );
 }
+
 export default function DateField({
   label,
   value,
@@ -157,10 +158,12 @@ export default function DateField({
   compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+
   return (
     <View style={{ gap: 4 }}>
       <Text style={styles.label}>{label}</Text>
-      <View style={styles.inputRow}>
+
+      <View style={styles.dateInputGroup}>
         <AppInput
           value={value}
           accessibilityLabel={label}
@@ -168,8 +171,9 @@ export default function DateField({
             if (
               validDate(next) &&
               ((minDate && next < minDate) || (maxDate && next > maxDate))
-            )
+            ) {
               return;
+            }
             onChange(next);
           }}
           editable={!disabled}
@@ -177,18 +181,20 @@ export default function DateField({
           maxLength={10}
           keyboardType="numbers-and-punctuation"
           containerStyle={styles.input}
-          style={compact ? styles.compactInput : undefined}
+          style={styles.dateInputValue}
         />
+
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Open calendar for ${label}`}
           disabled={disabled}
           onPress={() => setOpen(true)}
-          style={[styles.calendarButton, compact && styles.compactCalendar]}
+          style={styles.dateCalendarIcon}
         >
-          <AreaIcon name="calendar" size={compact ? 16 : 20} />
+          <AreaIcon name="calendar" color={COLORS.textLight} size={19} />
         </Pressable>
       </View>
+
       {open && !disabled && (
         <Calendar
           value={value}
@@ -200,8 +206,11 @@ export default function DateField({
       )}
     </View>
   );
+
+  // ===========================================
 }
 
+// ==================================================================
 const styles = StyleSheet.create({
   compactInput: {
     fontSize: 12,
@@ -225,6 +234,7 @@ const styles = StyleSheet.create({
 
   input: {
     flex: 1,
+    minWidth: 0,
   },
 
   calendarButton: {
@@ -286,69 +296,55 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: SPACING.sm,
   },
+
+  // dateInputGroup: {
+  //   flexDirection: "row",
+  //   alignItems: "center",
+  //   borderWidth: 1,
+  //   borderColor: COLORS.border,
+  //   borderRadius: 8,
+  //   backgroundColor: COLORS.white,
+  //   paddingHorizontal: 10,
+  //   minHeight: 48,
+  // },
+
+  dateInputGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    backgroundColor: COLORS.white,
+    paddingHorizontal: 10,
+    minHeight: 35,
+  },
+
+  dateTextContainer: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: "center",
+  },
+
+  dateInputLabel: {
+    fontSize: 10,
+    color: COLORS.textLight,
+  },
+
+  dateInputValue: {
+    fontSize: 14,
+    color: COLORS.text,
+    paddingHorizontal: 0,
+    // paddingVertical: 0,
+    borderWidth: 0,
+    minHeight: 40,
+  },
+
+  dateCalendarIcon: {
+    width: 36,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
 
-// const styles = StyleSheet.create({
-//   compactInput: { fontSize: 12, paddingHorizontal: 6 },
-//   compactCalendar: { width: 36 },
-//   label: { color: COLORS.text, fontSize: 14, fontWeight: "500" },
-//   inputRow: { flexDirection: "row", alignItems: "stretch" },
-//   input: { flex: 1 },
-//   calendarButton: {
-//     width: 48,
-//     minHeight: 48,
-//     alignItems: "center",
-//     justifyContent: "center",
-//     backgroundColor: "#f0f0f0",
-//     borderWidth: 1,
-//     borderColor: COLORS.border,
-//     borderRadius: 6,
-//     marginLeft: 4,
-//   },
-//   overlay: {
-//     flex: 1,
-//     backgroundColor: "rgba(0,0,0,0.4)",
-//     justifyContent: "center",
-//     alignItems: "center",
-//     padding: 16,
-//   },
-//   calendar: {
-//     width: "100%",
-//     maxWidth: 370,
-//     padding: 12,
-//     borderRadius: 12,
-//     backgroundColor: COLORS.white,
-//     gap: SPACING.md,
-//   },
-//   monthRow: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "space-between",
-//   },
-//   month: { color: COLORS.primary, fontWeight: "600", fontSize: 17 },
-//   monthButton: {
-//     minWidth: 44,
-//     minHeight: 44,
-//     alignItems: "center",
-//     justifyContent: "center",
-//   },
-//   arrow: { color: COLORS.primary, fontSize: 28 },
-//   grid: { flexDirection: "row", flexWrap: "wrap" },
-//   cell: {
-//     width: "14.2857%",
-//     minHeight: 44,
-//     justifyContent: "center",
-//     alignItems: "center",
-//     borderRadius: 6,
-//   },
-//   selected: { backgroundColor: COLORS.primary },
-//   disabled: { opacity: 0.3 },
-//   weekday: { color: COLORS.textLight, fontWeight: "600" },
-//   day: { color: COLORS.text, fontSize: 15 },
-//   selectedText: { color: COLORS.white },
-//   actions: {
-//     flexDirection: "row",
-//     justifyContent: "space-between",
-//     gap: SPACING.sm,
-//   },
-// });
+// ============================================================

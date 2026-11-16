@@ -147,7 +147,6 @@ export default function Home() {
               title={card.title}
               icon="dashboard"
               homeImage={card.image}
-              compactHome
               onPress={() => setActiveScreen(card.screen)}
             />
           </View>
@@ -158,25 +157,6 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  grid: {
-    width: "100%",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    columnGap: 5,
-    rowGap: 15,
-    padding: 0,
-    margin: 0,
-  },
-
-  cell: {
-    width: "49%",
-    minWidth: 0,
-    padding: 0,
-    margin: 0,
-  },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  cell: { flexGrow: 1, flexBasis: "45%", minWidth: 0 },
 });
-// const styles = StyleSheet.create({
-//   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-
-//   cell: { flexGrow: 1, flexBasis: "45%", minWidth: 0 },
-// });

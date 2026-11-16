@@ -2,35 +2,36 @@ import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
 import AreaIcon from "@/components/AreaIcon";
 import AreaPage from "@/components/AreaPage";
+import DateField from "@/components/DateField";
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 import { DateTimePicker } from "@expo/ui/community/datetime-picker";
 import { Directory, File, Paths } from "expo-file-system";
 import { useEffect, useState } from "react";
+
 import {
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    useWindowDimensions,
-    View,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
 } from "react-native";
-import DateField from "../../../components/DateField";
 import SelectField, {
-    type SelectOption,
+  type SelectOption,
 } from "../../../components/SelectField";
 import { loadLocationFilterOptions } from "../services/locationFilters";
 import { prepareReportCsv } from "../services/reportCsv";
 import {
-    exceedsTableDateRange,
-    tableDateRange,
+  exceedsTableDateRange,
+  tableDateRange,
 } from "../services/reportDateRange";
 import {
-    REGISTER_TABLE_COLUMNS,
-    staticReportCells,
+  REGISTER_TABLE_COLUMNS,
+  staticReportCells,
 } from "../services/reportTableColumns";
 import { isPickerCancellation } from "../services/trackerText";
 
@@ -733,8 +734,8 @@ export default function RegisterReportScreen({
   return (
     <AreaPage title={report.title} subtitle={report.title}>
       <View style={styles.form}>
-        <Text style={styles.sectionTitle}>Filters</Text>
-        <View style={styles.filterRow}>
+        {/* <Text style={styles.sectionTitle}>Filters</Text> */}
+        {/* <View style={styles.filterRow}>
           {Platform.OS === "web" ? (
             <>
               <View style={styles.fieldCell}>
@@ -762,51 +763,204 @@ export default function RegisterReportScreen({
             </>
           ) : (
             <>
-              <View style={styles.fieldCell}>
-                <Text style={styles.fieldLabel}>From Date</Text>
-                <View style={styles.dateButtonWrap}>
-                  <AppButton
-                    title={fromDate}
-                    variant="outline"
+              <View style={styles.filterRow}>
+                <View style={styles.fieldCell}>
+                  <Pressable
+                    style={styles.dateInputGroup}
                     onPress={() => openDatePicker("from")}
-                    style={styles.dateButton}
-                    textStyle={styles.dateText}
-                  />
-                  <View pointerEvents="none" style={styles.dateIcon}>
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.dateInputLabel}>From Date</Text>
+                      <Text style={styles.dateInputValue}>{fromDate}</Text>
+                    </View>
                     <AreaIcon
                       name="calendar"
                       color={COLORS.textLight}
                       size={19}
                     />
-                  </View>
+                  </Pressable>
+                </View>
+
+                <View style={styles.fieldCell}>
+                  <Pressable
+                    style={styles.dateInputGroup}
+                    onPress={() => openDatePicker("to")}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.dateInputLabel}>To Date</Text>
+                      <Text style={styles.dateInputValue}>{toDate}</Text>
+                    </View>
+                    <AreaIcon
+                      name="calendar"
+                      color={COLORS.textLight}
+                      size={19}
+                    />
+                  </Pressable>
                 </View>
               </View>
-              <View style={styles.fieldCell}>
-                <Text style={styles.fieldLabel}>To Date</Text>
-                <View style={styles.dateButtonWrap}>
-                  <AppButton
-                    title={toDate}
-                    variant="outline"
-                    onPress={() => openDatePicker("to")}
-                    style={styles.dateButton}
-                    textStyle={styles.dateText}
-                  />
-                  <View pointerEvents="none" style={styles.dateIcon}>
-                    <AreaIcon
-                      name="calendar"
-                      color={COLORS.textLight}
-                      size={19}
-                    />
+
+
+            </>
+          )}
+        </View> */}
+
+        {/* =====================================next =================== */}
+
+        {/* <View style={styles.filterRow}>
+          {Platform.OS === "web" ? (
+            <>
+           
+
+              <>
+                <View style={styles.fieldCell}>
+                  <View style={styles.dateInputGroup}>
+                    <View style={{ flex: 1 }}>
+                      <DateField
+                        compact
+                        label="From Date"
+                        value={fromDate}
+                        maxDate={todayInputDate()}
+                        onChange={(value) => {
+                          setFromDate(value);
+                          if (validDay(value) !== undefined) {
+                            setToDate(value);
+                          }
+                        }}
+                      />
+                    </View>
                   </View>
                 </View>
+
+                <View style={styles.fieldCell}>
+                  <View style={styles.dateInputGroup}>
+                    <View style={{ flex: 1 }}>
+                      <DateField
+                        compact
+                        label="To Date"
+                        value={toDate}
+                        minDate={fromDate}
+                        maxDate={todayInputDate()}
+                        onChange={setToDate}
+                      />
+                    </View>
+                  </View>
+                </View>
+              </>
+            </>
+          ) : (
+            <>
+              <View style={styles.fieldCell}>
+                <Pressable
+                  style={styles.dateInputGroup}
+                  onPress={() => openDatePicker("from")}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.dateInputLabel}>From Date</Text>
+                    <Text style={styles.dateInputValue}>{fromDate}</Text>
+                  </View>
+
+                  <AreaIcon
+                    name="calendar"
+                    color={COLORS.textLight}
+                    size={19}
+                  />
+                </Pressable>
+              </View>
+
+              <View style={styles.fieldCell}>
+                <Pressable
+                  style={styles.dateInputGroup}
+                  onPress={() => openDatePicker("to")}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.dateInputLabel}>To Date</Text>
+                    <Text style={styles.dateInputValue}>{toDate}</Text>
+                  </View>
+
+                  <AreaIcon
+                    name="calendar"
+                    color={COLORS.textLight}
+                    size={19}
+                  />
+                </Pressable>
+              </View>
+            </>
+          )}
+        </View> */}
+
+        <View style={styles.filterRow}>
+          {Platform.OS === "web" ? (
+            <>
+              <View style={styles.fieldCell}>
+                <DateField
+                  compact
+                  label="From Date"
+                  value={fromDate}
+                  maxDate={todayInputDate()}
+                  onChange={(value) => {
+                    setFromDate(value);
+                    if (validDay(value) !== undefined) {
+                      setToDate(value);
+                    }
+                  }}
+                />
+              </View>
+
+              <View style={styles.fieldCell}>
+                <DateField
+                  compact
+                  label="To Date"
+                  value={toDate}
+                  minDate={fromDate}
+                  maxDate={todayInputDate()}
+                  onChange={setToDate}
+                />
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.fieldCell}>
+                <Text style={styles.fieldLabel}>From Date</Text>
+
+                <Pressable
+                  style={styles.dateInputGroup}
+                  onPress={() => openDatePicker("from")}
+                >
+                  <Text style={styles.dateInputValue}>{fromDate}</Text>
+
+                  <AreaIcon
+                    name="calendar"
+                    color={COLORS.textLight}
+                    size={19}
+                  />
+                </Pressable>
+              </View>
+
+              <View style={styles.fieldCell}>
+                <Text style={styles.fieldLabel}>To Date</Text>
+
+                <Pressable
+                  style={styles.dateInputGroup}
+                  onPress={() => openDatePicker("to")}
+                >
+                  <Text style={styles.dateInputValue}>{toDate}</Text>
+
+                  <AreaIcon
+                    name="calendar"
+                    color={COLORS.textLight}
+                    size={19}
+                  />
+                </Pressable>
               </View>
             </>
           )}
         </View>
+
+        {/* =================================================================== */}
         <View style={styles.filterRow}>
           <View style={styles.fieldCell}>
             <SelectField
-              label="Region"
+              label=""
               value={region}
               options={regionOptions}
               placeholder="All regions"
@@ -821,7 +975,7 @@ export default function RegisterReportScreen({
           </View>
           <View style={styles.fieldCell}>
             <SelectField
-              label="Zone"
+              label=""
               value={zone}
               options={zoneOptions}
               placeholder="All zones"
@@ -837,7 +991,7 @@ export default function RegisterReportScreen({
         <View style={styles.filterRow}>
           <View style={styles.fieldCell}>
             <SelectField
-              label="Store Name"
+              label=""
               value={store}
               options={storeOptions}
               placeholder="All stores"
@@ -849,10 +1003,10 @@ export default function RegisterReportScreen({
           {"statuses" in report && report.statuses && (
             <View style={styles.fieldCell}>
               <SelectField
-                label={report.statusLabel}
+                label=""
                 value={status}
                 options={toOptions(report.statuses)}
-                placeholder="All"
+                placeholder={`All ${report.statusLabel}`}
                 open={openSelect === "status"}
                 onOpenChange={(open) => setOpenSelect(open ? "status" : null)}
                 onChange={setStatus}
@@ -883,41 +1037,45 @@ export default function RegisterReportScreen({
             </View>
           )}
         </View>
-        <Text style={styles.demoNotice}>
-          {loading
-            ? "Loading report data…"
-            : `${rows.length} of ${total} report records`}
-        </Text>
-        {exportMessage && (
-          <Text style={styles.exportMessage}>{exportMessage}</Text>
-        )}
-        {exceedsTableDateRange(fromDate, toDate) && (
-          <Text style={styles.tableHint}>
-            You can export full range data. Only the first 7 days from the
-            selected start date are visible in the table.
-          </Text>
-        )}
+
         <View style={styles.actionRow}>
+          <AppButton
+            title="Reset Filters"
+            variant="outline"
+            onPress={resetFilters}
+          />
           <AppButton
             title={loading ? "Loading…" : "Filter Report"}
             onPress={filterReport}
             disabled={loading}
             style={styles.actionButton}
           />
-          <AppButton
-            title="Export CSV"
-            variant="outline"
-            onPress={exportReport}
-            disabled={loading}
-            style={styles.actionButton}
-          />
         </View>
+
         <AppButton
-          title="Reset Filters"
+          title="Export CSV"
           variant="outline"
-          onPress={resetFilters}
+          onPress={exportReport}
+          disabled={loading}
+          style={styles.actionButton}
         />
       </View>
+
+      <Text style={styles.demoNotice}>
+        {loading
+          ? "Loading report data…"
+          : `${rows.length} of ${total} report records`}
+      </Text>
+      {exportMessage && (
+        <Text style={styles.exportMessage}>{exportMessage}</Text>
+      )}
+      {exceedsTableDateRange(fromDate, toDate) && (
+        <Text style={styles.tableHint}>
+          You can export full range data. Only the first 7 days from the
+          selected start date are visible in the table.
+        </Text>
+      )}
+
       {error && (
         <Text accessibilityRole="alert" style={styles.error}>
           {error}
@@ -1265,5 +1423,40 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: SPACING.sm,
+  },
+
+  // dateInputGroup: {
+  //   flexDirection: "row",
+  //   alignItems: "center",
+  //   borderWidth: 1,
+  //   borderColor: COLORS.border,
+  //   borderRadius: 8,
+  //   backgroundColor: COLORS.white,
+  //   paddingHorizontal: 12,
+  //   minHeight: 48,
+  // },
+
+  dateInputGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    backgroundColor: COLORS.white,
+    paddingHorizontal: 12,
+    minHeight: 35,
+    marginTop: 4,
+  },
+
+  dateInputLabel: {
+    fontSize: 10,
+    color: COLORS.textLight,
+  },
+
+  dateInputValue: {
+    fontSize: FONT_SIZE.sm,
+    color: COLORS.text,
+    fontWeight: FONT_WEIGHT.medium,
   },
 });

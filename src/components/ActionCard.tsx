@@ -11,7 +11,6 @@ export default function ActionCard({
   filled = false,
   homeStyle = false,
   homeImage,
-  compactHome = false,
 }: {
   title: string;
   icon: AreaIconName;
@@ -19,14 +18,12 @@ export default function ActionCard({
   filled?: boolean;
   homeStyle?: boolean;
   homeImage?: number;
-  compactHome?: boolean;
 }) {
   return (
     <View
       style={[
         styles.wrapper,
         (homeStyle || Boolean(homeImage)) && styles.homeWrapper,
-        compactHome && styles.compactHomeWrapper,
       ]}
     >
       {(homeStyle || homeImage) && (
@@ -57,8 +54,7 @@ export default function ActionCard({
           accessible={false}
           source={homeImage}
           contentFit="contain"
-          // style={styles.homeImage}
-          style={[styles.homeImage, compactHome && styles.compactHomeImage]}
+          style={styles.homeImage}
         />
       )}
       <AppButton
@@ -71,7 +67,6 @@ export default function ActionCard({
           Boolean(homeStyle || homeImage) && styles.homeCard,
           Boolean(homeImage) && styles.imageCard,
           homeStyle && styles.imageCard,
-          compactHome && styles.compactHomeCard,
         ]}
         textStyle={[
           styles.label,
@@ -109,7 +104,7 @@ export default function ActionCard({
 const styles = StyleSheet.create({
   wrapper: { flex: 1 },
   card: {
-    minHeight: 80,
+    minHeight: 136,
     borderRadius: 16,
     borderColor: COLORS.border,
     backgroundColor: COLORS.white,
@@ -150,7 +145,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 18,
     overflow: "hidden",
-    minHeight: 120,
+    minHeight: 190,
   },
   homeImage: {
     position: "absolute",
@@ -180,28 +175,4 @@ const styles = StyleSheet.create({
   },
   homeLabel: { color: "#3d3d3d", fontWeight: FONT_WEIGHT.bold },
   homeIcon: { backgroundColor: COLORS.transparent },
-  compactHomeCard: {
-    // minHeight: 100,
-    // paddingTop: 55,
-    // paddingBottom: 15,
-    // // paddingHorizontal: 5,
-
-    minHeight: 80,
-    paddingTop: 85,
-    paddingBottom: 8,
-    paddingHorizontal: 5,
-  },
-
-  compactHomeWrapper: {
-    minHeight: 90,
-    borderRadius: 10,
-  },
-
-  compactHomeImage: {
-    position: "absolute",
-    top: 5,
-    left: "5%",
-    width: "90%",
-    height: 70,
-  },
 });

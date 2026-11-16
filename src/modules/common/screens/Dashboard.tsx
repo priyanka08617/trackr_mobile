@@ -751,83 +751,6 @@ export default function Dashboard() {
 
   return (
     <AreaPage title="Dashboard">
-      {/* Temporarily commented until the updated AJAX filter API is ready.
-      <View style={styles.filterPanel}>
-        <Text style={styles.filterTitle}>Filter Dashboard</Text>
-        <View style={styles.filterGrid}>
-          <View style={styles.filterCell}>
-            <SelectField
-              label="Zone"
-              value={zone}
-              options={[{ value: "", label: "All zones" }, ...zoneOptions]}
-              placeholder="All zones"
-              open={openFilter === "zone"}
-              onOpenChange={(open) => setOpenFilter(open ? "zone" : null)}
-              onChange={(value) => {
-                setZone(value);
-                setRegion("");
-                setStore("");
-              }}
-            />
-          </View>
-          <View style={styles.filterCell}>
-            <SelectField
-              label="Region"
-              value={region}
-              options={[{ value: "", label: "All regions" }, ...regionOptions]}
-              placeholder="All regions"
-              disabled={!zone}
-              open={openFilter === "region"}
-              onOpenChange={(open) => setOpenFilter(open ? "region" : null)}
-              onChange={(value) => {
-                setRegion(value);
-                setStore("");
-              }}
-            />
-          </View>
-          <View style={styles.storeFilterCell}>
-            <SelectField
-              label="Store"
-              value={store}
-              options={[{ value: "", label: "All stores" }, ...storeOptions]}
-              placeholder="All stores"
-              disabled={!zone}
-              open={openFilter === "store"}
-              onOpenChange={(open) => setOpenFilter(open ? "store" : null)}
-              onChange={setStore}
-            />
-          </View>
-        </View>
-        {filterError && <Text style={styles.filterError}>{filterError}</Text>}
-        <View style={styles.filterActions}>
-          <AppButton
-            title="Apply Filters"
-            onPress={() => {
-              setLoading(true);
-              setError(undefined);
-              setAppliedFilters({ zone, region, store });
-              setRefreshKey((value) => value + 1);
-            }}
-            style={styles.filterActionButton}
-          />
-          <AppButton
-            title="Reset"
-            variant="outline"
-            onPress={() => {
-              setZone("");
-              setRegion("");
-              setStore("");
-              setLoading(true);
-              setError(undefined);
-              setAppliedFilters({});
-              setRefreshKey((value) => value + 1);
-            }}
-            style={styles.filterActionButton}
-          />
-        </View>
-      </View>
-      */}
-
       {loading && <AppLoader message="Loading dashboard data..." />}
       {error && (
         <View style={styles.errorBox}>
@@ -1381,7 +1304,12 @@ const styles = StyleSheet.create({
     padding: SPACING.sm,
   },
   warningText: { color: COLORS.text, fontSize: FONT_SIZE.xs },
-  cardGrid: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm },
+  cardGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: SPACING.sm,
+    width: "100%",
+  },
   gridCell: { flexBasis: "100%", width: "100%", minWidth: 0 },
   kpiStrip: { gap: SPACING.sm, paddingRight: SPACING.sm, paddingVertical: 2 },
   kpiCard: {

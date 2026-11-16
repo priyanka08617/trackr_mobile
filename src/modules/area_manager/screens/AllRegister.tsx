@@ -7,7 +7,7 @@ const REGISTER_ITEMS = [
   { id: "footfall", title: "Footfall Report", icon: "clock" },
   { id: "exchange", title: "Exchange Report", icon: "report" },
   { id: "electricity", title: "Electricity Report", icon: "dashboard" },
-  { id: "generator", title: "Generator Report", icon: "setting" },
+  { id: "generator", title: "Generator Report", icon: "generator" },
   { id: "hk_sg", title: "HK Attendance Report", icon: "check" },
   { id: "lost_found", title: "Lost & Found Report", icon: "faq" },
   { id: "scrap", title: "Scrap Report", icon: "ban" },
@@ -31,7 +31,7 @@ export default function AllRegister() {
 
       <Pressable
         style={styles.button}
-        onPress={() => router.push("/common/dashboard")}
+        onPress={() => router.push("/area_manager/dashboard")}
       >
         <Text style={styles.buttonText}>Dashboard</Text>
       </Pressable>
@@ -107,28 +107,6 @@ export default function AllRegister() {
       </Pressable>
     </ScrollView>
   );
-
-  // return (
-  //   <AreaPage
-  //     title="All Register"
-  //     subtitle="Access all store registers and daily reports."
-  //   >
-  //     <View style={styles.grid}>
-  //       {REGISTER_ITEMS.map((item) => (
-  //         <View key={item.id} style={styles.cell}>
-  //           <ActionCard
-  //             filled
-  //             title={item.title}
-  //             icon={item.icon}
-  //             onPress={() =>
-  //               Alert.alert(item.title, "Report page will be added later.")
-  //             }
-  //           />
-  //         </View>
-  //       ))}
-  //     </View>
-  //   </AreaPage>
-  // );
 }
 
 const styles = StyleSheet.create({

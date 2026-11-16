@@ -15,6 +15,7 @@ const ICONS = {
   check: { ios: "checkmark.circle", fa: "check-circle" },
   cancel: { ios: "xmark.circle", fa: "times-circle" },
   calendar: { ios: "calendar", fa: "calendar-alt" },
+  generator: { ios: "fuelpump.fill", fa: "gas-pump" },
   edit: { ios: "square.and.pencil", fa: "edit" },
   clipboard: { ios: "checklist", fa: "clipboard-check" },
   globe: { ios: "globe", fa: "globe" },

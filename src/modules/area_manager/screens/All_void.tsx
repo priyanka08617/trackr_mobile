@@ -1,5 +1,6 @@
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
+
 import {
   AreaHeaderBackContext,
   AreaHeaderBackVisibleContext,
@@ -13,6 +14,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -561,17 +563,37 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: SPACING.sm },
   column: { flex: 1, minWidth: 0 },
   moduleRow: { gap: SPACING.md },
+  // moduleCard: {
+  //   flex: 1,
+  //   borderRadius: 10,
+  //   overflow: "hidden",
+  //   backgroundColor: "#fdf7f7",
+  //   elevation: 2,
+  //   shadowColor: "#000",
+  //   shadowOffset: { width: 0, height: 1 },
+  //   shadowOpacity: 0.12,
+  //   shadowRadius: 2,
+  // },
+
   moduleCard: {
     flex: 1,
     borderRadius: 10,
     overflow: "hidden",
     backgroundColor: "#fdf7f7",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 2,
+
+    ...Platform.select({
+      web: {
+        boxShadow: "0px 1px 2px rgba(0,0,0,0.12)",
+      },
+      ios: {
+        boxShadow: "0px 1px 2px rgba(0,0,0,0.12)",
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
+
   moduleTop: { backgroundColor: COLORS.white, padding: SPACING.sm },
   moduleCounts: {
     flexDirection: "row",
