@@ -44,6 +44,8 @@ const ICONS = {
   unlink: { ios: "link", fa: "unlink" },
   chartLine: { ios: "chart.xyaxis.line", fa: "chart-line" },
   tag: { ios: "tag", fa: "tag" },
+  cut: { ios: "scissors", fa: "cut" },
+  shoePrints: { ios: "shoeprints.fill", fa: "shoe-prints" },
 } satisfies Record<string, { ios: SymbolViewProps["name"]; fa: string }>;
 
 export type AreaIconName = keyof typeof ICONS;

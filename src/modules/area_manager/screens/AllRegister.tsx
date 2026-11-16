@@ -1,10 +1,9 @@
 // ================================================================================================
 import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
-
 const REGISTER_ITEMS = [
-  { id: "alteration", title: "Alteration Report", icon: "setting" },
-  { id: "footfall", title: "Footfall Report", icon: "clock" },
+  { id: "alteration", title: "Alteration Report", icon: "cut" },
+  { id: "footfall", title: "Footfall Report", icon: "shoePrints" },
   { id: "exchange", title: "Exchange Report", icon: "report" },
   { id: "electricity", title: "Electricity Report", icon: "dashboard" },
   { id: "generator", title: "Generator Report", icon: "generator" },

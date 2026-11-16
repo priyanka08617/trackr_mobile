@@ -1,5 +1,14 @@
 import ActionCard from "@/components/ActionCard";
 import { AppButton } from "@/components/AppButton";
+import {
+  AreaHeaderBackContext,
+  AreaHeaderBackVisibleContext,
+  AreaHeaderTitleContext,
+} from "@/components/AreaHeaderBackContext";
+import AreaPage from "@/components/AreaPage";
+import DateField from "@/components/DateField";
+import DynamicDataTable from "@/components/DynamicAutoDataTable";
+
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
 import { DateTimePicker } from "@expo/ui/community/datetime-picker";
 import { Directory, File, Paths } from "expo-file-system";
@@ -7,7 +16,6 @@ import { router } from "expo-router";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Modal,
   Platform,
   Pressable,
@@ -15,15 +23,8 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import DateField from "../../../components/DateField";
-import {
-  AreaHeaderBackContext,
-  AreaHeaderBackVisibleContext,
-  AreaHeaderTitleContext,
-} from "@/components/AreaHeaderBackContext";
 import { prepareReportCsv } from "../services/reportCsv";
 import { exceedsTableDateRange } from "../services/reportDateRange";
 import {
@@ -34,9 +35,7 @@ import {
 import { trackerTableRow } from "../services/reportTableFormat";
 
 import AreaIcon from "@/components/AreaIcon";
-import SelectField, {
-  type SelectOption,
-} from "../../../components/SelectField";
+import SelectField, { type SelectOption } from "@/components/SelectField";
 import {
   loadTrackerFilterOptions,
   loadTrackerReportPage,
@@ -49,52 +48,48 @@ import { isPickerCancellation } from "../services/trackerText";
 
 const PAGE_SIZE = 50;
 
-// const TRACKERS: TrackerLink[] = [
-//   { id: "fmcg_de", name: "FMCG D&E Tracker" },
-//   { id: "non_apps_dd", name: "Non-Apps D&D Tracker" },
-//   { id: "snap_up_dd", name: "SnapUp D&D Tracker" },
-//   { id: "beauty_dd", name: "Tracker for Beauty D&D / TESTER" },
-//   { id: "tso_dd", name: "TSO D&D" },
-//   { id: "store_incident_log", name: "Store Incident Log Tracker" },
-//   {
-//     id: "jewellery_hair_accessories_dd",
-//     name: "Jewellery & Hair Accessories D&D Register",
-//   },
-//   { id: "unloading_payment", name: "Load & Unload Payment Tracker" },
-//   { id: "canteen_fooding", name: "Canteen Fooding Tracker" },
-//   { id: "fmcg_price_mismatch", name: "FMCG Price Mismatch" },
-//   { id: "grt_packet_readiness", name: "GRT Packet Readiness Tracker" },
-//   { id: "ist_packet_readiness", name: "IST Packet Readiness Tracker" },
-//   { id: "near_to_expiry", name: "Near To Expiry" },
-//   { id: "damage_apparel", name: "Damage Apparel" },
-//   { id: "missing_tag", name: "Missing Tag" },
-//   { id: "sensor_tag", name: "Sensor Tag" },
-//   { id: "monthly_lp_global_count", name: "Monthly LP Global Count" },
-// ];
-
-
 const TRACKERS: TrackerLink[] = [
-  { id: "fmcg_de", name: "FMCG D&E Tracker", icon: "shoppingCart" },
-  { id: "non_apps_dd", name: "Non-Apps D&D Tracker", icon: "clipboardList" },
-  { id: "snap_up_dd", name: "SnapUp D&D Tracker", icon: "calendar" },
-  { id: "beauty_dd", name: "Tracker for Beauty D&D / TESTER", icon: "gem" },
+  { id: "fmcg_de", name: "FMCG D&E", icon: "shoppingCart" },
+  { id: "non_apps_dd", name: "Non-Apps D&D ", icon: "clipboardList" },
+  { id: "snap_up_dd", name: "SnapUp D&D ", icon: "calendar" },
+  { id: "beauty_dd", name: " Beauty D&D / TESTER", icon: "gem" },
   { id: "tso_dd", name: "TSO D&D", icon: "chartLine" },
-  { id: "store_incident_log", name: "Store Incident Log Tracker", icon: "archive" },
+  {
+    id: "store_incident_log",
+    name: "Store Incident Log",
+    icon: "archive",
+  },
   {
     id: "jewellery_hair_accessories_dd",
-    name: "Jewellery & Hair Accessories D&D Register",
+    name: "Jewellery & Hair Accessories D&D",
     icon: "palette",
   },
-  { id: "unloading_payment", name: "Load & Unload Payment Tracker", icon: "truckLoading" },
-  { id: "canteen_fooding", name: "Canteen Fooding Tracker", icon: "utensils" },
+  {
+    id: "unloading_payment",
+    name: "Load & Unload Payment",
+    icon: "truckLoading",
+  },
+  { id: "canteen_fooding", name: "Canteen Fooding", icon: "utensils" },
   { id: "fmcg_price_mismatch", name: "FMCG Price Mismatch", icon: "tag" },
-  { id: "grt_packet_readiness", name: "GRT Packet Readiness Tracker", icon: "clipboardList" },
-  { id: "ist_packet_readiness", name: "IST Packet Readiness Tracker", icon: "boxOpen" },
+  {
+    id: "grt_packet_readiness",
+    name: "GRT Packet Readiness",
+    icon: "clipboardList",
+  },
+  {
+    id: "ist_packet_readiness",
+    name: "IST Packet Readiness",
+    icon: "boxOpen",
+  },
   { id: "near_to_expiry", name: "Near To Expiry", icon: "hourglassHalf" },
   { id: "damage_apparel", name: "Damage Apparel", icon: "unlink" },
   { id: "missing_tag", name: "Missing Tag", icon: "tag" },
   { id: "sensor_tag", name: "Sensor Tag", icon: "magic" },
-  { id: "monthly_lp_global_count", name: "Monthly LP Global Count", icon: "globe" },
+  {
+    id: "monthly_lp_global_count",
+    name: "Monthly LP Global Count",
+    icon: "globe",
+  },
 ];
 
 function inputDate(date: Date): string {
@@ -131,69 +126,45 @@ function TrackerTable({
   rows: TrackerReportRow[];
   offset: number;
 }) {
-  const { height } = useWindowDimensions();
   const columns = trackerReportColumns(trackerId, apiColumns, rows);
-  const tableRows = rows.map((row) => ({
-    ...row,
-    cells: staticReportCells(trackerTableRow(row), columns),
-  }));
+
+  const tableData = rows.map((row, index) => {
+    const cells = staticReportCells(trackerTableRow(row), columns);
+
+    const record: Record<string, string> = {
+      __rowKey: `${trackerId}-${offset + index}-${row.id}`,
+      serial: String(offset + index + 1),
+    };
+
+    columns.forEach((column, columnIndex) => {
+      record[`col_${columnIndex}`] = String(cells[columnIndex] ?? "");
+    });
+
+    return record;
+  });
+
+  const tableColumns = [
+    {
+      title: "#",
+      dataIndex: "serial",
+      fixed: "left" as const,
+      width: 55,
+    },
+    ...columns.map((column, index) => ({
+      title: column.title,
+      dataIndex: `col_${index}`,
+    })),
+  ];
+
   return (
-    <View style={styles.tableContainer}>
-      <Text style={styles.tableHint}>
-        Swipe left or right to view all columns
-      </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator nestedScrollEnabled>
-        <ScrollView
-          key={offset}
-          style={{
-            maxHeight: Math.max(180, Math.min(560, height * 0.6)),
-            width: 64 + columns.length * 160,
-          }}
-          stickyHeaderIndices={[0]}
-          nestedScrollEnabled
-          showsVerticalScrollIndicator
-        >
-          <View>
-            <View style={[styles.tableRow, styles.tableHeader]}>
-              <Text
-                accessibilityRole="header"
-                style={[styles.tableCell, styles.numberCell, styles.headerText]}
-              >
-                #
-              </Text>
-              {columns.map((column) => (
-                <Text
-                  key={column.data}
-                  accessibilityRole="header"
-                  style={[styles.tableCell, styles.headerText]}
-                >
-                  {column.title}
-                </Text>
-              ))}
-            </View>
-          </View>
-          {tableRows.map((row, index) => (
-            <View
-              key={`${row.id}-${index}`}
-              style={[styles.tableRow, index % 2 === 1 && styles.alternateRow]}
-            >
-              <Text style={[styles.tableCell, styles.numberCell]}>
-                {offset + index + 1}
-              </Text>
-              {row.cells.map((value, columnIndex) => (
-                <Text
-                  key={columns[columnIndex].data}
-                  selectable
-                  style={styles.tableCell}
-                >
-                  {value}
-                </Text>
-              ))}
-            </View>
-          ))}
-        </ScrollView>
-      </ScrollView>
-    </View>
+    <DynamicDataTable
+      columns={tableColumns}
+      data={tableData}
+      height={400}
+      refreshKey={`${trackerId}-${offset}-${rows.length}-${columns
+        .map((c) => c.data)
+        .join(",")}`}
+    />
   );
 }
 
@@ -422,7 +393,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
       >
         <View style={styles.header}>
           <View style={styles.form}>
-            <Text style={styles.sectionTitle}>Filters</Text>
+            {/* <Text style={styles.sectionTitle}>Filters</Text> */}
             <View style={styles.filterRow}>
               {Platform.OS === "web" ? (
                 <>
@@ -495,7 +466,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
             <View style={styles.filterRow}>
               <View style={styles.fieldCell}>
                 <SelectField
-                  label="Region"
+                  label=""
                   value={region}
                   options={regionOptions}
                   placeholder="All regions"
@@ -508,7 +479,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
               </View>
               <View style={styles.fieldCell}>
                 <SelectField
-                  label="Zone"
+                  label=""
                   value={zone}
                   options={zoneOptions}
                   placeholder="All zones"
@@ -522,7 +493,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
             <View style={styles.filterRow}>
               <View style={styles.fieldCell}>
                 <SelectField
-                  label="Store Name"
+                  label=""
                   value={store}
                   options={storeOptions}
                   placeholder="All stores"
@@ -530,35 +501,37 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
                 />
               </View>
             </View>
-            <Text style={styles.demoNotice}>
-              {loading
-                ? "Loading report data\u2026"
-                : `${rows.length} of ${total} report records`}
-            </Text>
+
             {exportMessage ? (
               <Text style={styles.exportMessage}>{exportMessage}</Text>
             ) : null}
             <View style={styles.actionRow}>
+              <AppButton
+                title="Reset Filters"
+                variant="outline"
+                onPress={resetFilters}
+                disabled={loading || exporting}
+              />
+
               <AppButton
                 title={loading ? "Loading\u2026" : "Filter Report"}
                 onPress={applyFilters}
                 disabled={loading || exporting}
                 style={styles.actionButton}
               />
-              <AppButton
-                title={exporting ? "Exporting\u2026" : "Export CSV"}
-                variant="outline"
-                onPress={() => void exportReport()}
-                disabled={exporting}
-                style={styles.actionButton}
-              />
             </View>
             <AppButton
-              title="Reset Filters"
+              title={exporting ? "Exporting\u2026" : "Export CSV"}
               variant="outline"
-              onPress={resetFilters}
-              disabled={loading || exporting}
+              onPress={() => void exportReport()}
+              disabled={exporting}
+              style={styles.actionButton}
             />
+            <Text style={styles.demoNotice}>
+              {loading
+                ? "Loading report data\u2026"
+                : `${rows.length} of ${total} report records`}
+            </Text>
           </View>
           {error ? (
             <Text accessibilityRole="alert" style={styles.error}>
@@ -760,8 +733,7 @@ export default function AllTrackers({ onBack }: { onBack?: () => void }) {
     if (backHandlerRef) backHandlerRef.current = handleBack;
     setBackVisible(true);
     return () => {
-      if (backHandlerRef?.current === handleBack)
-        backHandlerRef.current = null;
+      if (backHandlerRef?.current === handleBack) backHandlerRef.current = null;
       setBackVisible(false);
     };
   }, [backHandlerRef, handleBack, setBackVisible]);
@@ -771,48 +743,43 @@ export default function AllTrackers({ onBack }: { onBack?: () => void }) {
   }
 
   return (
-    <SafeAreaView edges={["left", "right", "bottom"]} style={styles.screen}>
-      <FlatList
-        data={TRACKERS}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        numColumns={2}
-        columnWrapperStyle={styles.gridRow}
-        renderItem={({ item }) => (
-          <View style={styles.cell}>
+    <AreaPage
+      title="All Trackers"
+      subtitle="Access all store trackers and reports."
+      compact
+    >
+      <View style={styles.grid}>
+        {TRACKERS.map((item) => (
+          <View key={item.id} style={styles.cell}>
             <ActionCard
               filled
               title={item.name}
               icon={item.icon ?? "report"}
-              cardHeight={170}
-              centeredContent
               onPress={() => setSelectedTracker(item)}
             />
           </View>
-        )}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>No trackers available.</Text>
-          </View>
-        }
-      />
-    </SafeAreaView>
+        ))}
+      </View>
+    </AreaPage>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.surface },
-  content: { padding: SPACING.lg, paddingBottom: SPACING.xxl, gap: SPACING.md },
-  header: { gap: SPACING.sm, marginBottom: SPACING.sm },
-  title: {
-    color: COLORS.text,
-    fontSize: FONT_SIZE.xl,
-    fontWeight: FONT_WEIGHT.bold,
+  screen: { flex: 1, backgroundColor: COLORS.surface, width: "100%" },
+
+  content: {
+    // padding: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+    gap: SPACING.sm,
+    width: "100%",
+    paddingHorizontal: 3,
   },
-  count: { color: COLORS.textLight, fontSize: FONT_SIZE.xs },
-  gridRow: { gap: SPACING.md },
-  cell: { flex: 1, minWidth: 0 },
+
+  header: {
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+
   form: {
     gap: SPACING.md,
     padding: SPACING.md,
@@ -821,11 +788,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  sectionTitle: {
-    color: COLORS.text,
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-  },
+
+  // content: {
+  //   paddingHorizontal: 5,
+  //   paddingVertical: 8,
+  //   paddingBottom: SPACING.xxl,
+  //   gap: 8,
+  // },
+  // header: { gap: SPACING.sm, marginBottom: SPACING.sm },
+  // form: {
+  //   gap: SPACING.md,
+  //   padding: SPACING.md,
+  //   backgroundColor: COLORS.white,
+  //   borderRadius: 12,
+  //   borderWidth: 1,
+  //   borderColor: COLORS.border,
+  // },
   filterRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -887,35 +865,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: SPACING.sm,
   },
-  tableContainer: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    overflow: "hidden",
-    backgroundColor: COLORS.white,
-  },
   tableHint: {
     padding: SPACING.sm,
     color: COLORS.textLight,
     fontSize: FONT_SIZE.xs,
   },
-  tableRow: {
-    flexDirection: "row",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: COLORS.border,
-  },
-  tableHeader: { backgroundColor: COLORS.primary },
-  tableCell: {
-    width: 160,
-    padding: SPACING.sm,
-    color: COLORS.text,
-    fontSize: FONT_SIZE.sm,
-    borderRightWidth: StyleSheet.hairlineWidth,
-    borderRightColor: COLORS.border,
-  },
-  numberCell: { width: 64 },
-  headerText: { color: COLORS.white, fontWeight: FONT_WEIGHT.bold },
-  alternateRow: { backgroundColor: COLORS.surface },
   paginationContainer: { gap: SPACING.sm },
   pagination: {
     flexDirection: "row",
@@ -968,5 +922,6 @@ const styles = StyleSheet.create({
   },
   error: { color: COLORS.danger, textAlign: "center", fontSize: FONT_SIZE.sm },
   retry: { minWidth: 140 },
-  footer: { padding: SPACING.md },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  cell: { flexGrow: 1, flexBasis: "45%", minWidth: 0 },
 });
