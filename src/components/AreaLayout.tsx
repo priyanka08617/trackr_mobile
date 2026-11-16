@@ -54,7 +54,7 @@ export const AREA_NAVIGATION = [
 
 const PAGE_TITLES: Record<string, string> = {
   // "/area_manager": "Dashboard",
-  "/common/dashboard": "Dashboard",
+  "/area_manager/dashboard": "Dashboard",
   "/common/home": "Home",
   "/area_manager/setting": "Settings",
   "/areamanger/company-faq": "Company FAQs",
