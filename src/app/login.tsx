@@ -102,7 +102,7 @@ export default function LoginScreen() {
       // console.log("Folder received:", folder);
       // router.replace(`/${folder}/test` as Href);
       // END 2026-11-11 12:59 IST
-      router.replace(`/${folder}/all_register` as Href);
+      router.replace(`/${folder}/dashboard` as Href);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
 

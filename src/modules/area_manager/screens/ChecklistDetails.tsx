@@ -15,22 +15,26 @@ import SelectField from "../../../components/SelectField";
 import {
     AreaHeaderBackContext,
     AreaHeaderBackVisibleContext,
-} from "../../report/services/AreaHeaderBackContext";
+    AreaHeaderTitleContext,
+} from "@/components/AreaHeaderBackContext";
 import { useRmChecklistData } from "./DataContext";
 
 export default function ChecklistDetails() {
   const headerBackHandlerRef = useContext(AreaHeaderBackContext);
   const setHeaderBackVisible = useContext(AreaHeaderBackVisibleContext);
+  const setHeaderTitle = useContext(AreaHeaderTitleContext);
   useEffect(() => {
-    if (headerBackHandlerRef)
-      headerBackHandlerRef.current = () =>
-        router.replace("/area_manager/rm_checklist");
+    const goBack = () => router.replace("/area_manager/rm_checklist");
+    if (headerBackHandlerRef) headerBackHandlerRef.current = goBack;
     setHeaderBackVisible(true);
+    setHeaderTitle("RM Checklist Details");
     return () => {
-      if (headerBackHandlerRef) headerBackHandlerRef.current = null;
+      if (headerBackHandlerRef?.current === goBack)
+        headerBackHandlerRef.current = null;
       setHeaderBackVisible(false);
+      setHeaderTitle(null);
     };
-  }, [headerBackHandlerRef, setHeaderBackVisible]);
+  }, [headerBackHandlerRef, setHeaderBackVisible, setHeaderTitle]);
   const { code } = useLocalSearchParams<{ code?: string | string[] }>();
   const selectedCode = Array.isArray(code) ? code[0] : code;
   const { records, loading, error, onLoadDetails } = useRmChecklistData();

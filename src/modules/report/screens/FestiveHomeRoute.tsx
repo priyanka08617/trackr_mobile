@@ -69,7 +69,7 @@ export default function FestiveHomeRoute() {
   const [message, setMessage] = useState<string>();
   const busy = useRef(false);
   const generation = useRef(0);
-  const backHandler = useContext(AreaHeaderBackContext);
+  const backHandlerRef = useContext(AreaHeaderBackContext);
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
 
   const loadOptions = useCallback(async () => {
@@ -99,21 +99,22 @@ export default function FestiveHomeRoute() {
     void loadOptions();
   }, [loadOptions]);
   useEffect(() => {
-    if (backHandler)
-      backHandler.current = () => {
-        if (opened) {
-          generation.current++;
-          setOpened(false);
-          setReport(undefined);
-          setError(undefined);
-        } else router.back();
-      };
+    const goBack = () => {
+      if (opened) {
+        generation.current++;
+        setOpened(false);
+        setReport(undefined);
+        setError(undefined);
+      } else if (router.canGoBack()) router.back();
+      else router.replace("/area_manager/all_register");
+    };
+    if (backHandlerRef) backHandlerRef.current = goBack;
     setBackVisible(true);
     return () => {
-      if (backHandler) backHandler.current = null;
+      if (backHandlerRef?.current === goBack) backHandlerRef.current = null;
       setBackVisible(false);
     };
-  }, [backHandler, opened, setBackVisible]);
+  }, [backHandlerRef, opened, setBackVisible]);
   const zones = useMemo(
     () => [...new Set(stores.map((s) => text(s.zone)))].sort(),
     [stores],

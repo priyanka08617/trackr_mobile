@@ -27,6 +27,22 @@ const ICONS = {
   chevron: { ios: "chevron.right", fa: "chevron-right" },
   close: { ios: "xmark", fa: "times" },
   back: { ios: "arrow.left", fa: "arrow-left" },
+  shoppingCart: { ios: "cart", fa: "shopping-cart" },
+  archive: { ios: "archivebox", fa: "archive" },
+  magic: { ios: "wand.and.stars", fa: "magic" },
+  palette: { ios: "paintpalette", fa: "palette" },
+  boxOpen: { ios: "shippingbox", fa: "box-open" },
+  userTie: { ios: "person.crop.rectangle", fa: "user-tie" },
+  gem: { ios: "diamond", fa: "gem" },
+  truckLoading: { ios: "truck.box", fa: "truck-loading" },
+  utensils: { ios: "fork.knife", fa: "utensils" },
+  balanceScaleLeft: { ios: "scalemass", fa: "balance-scale-left" },
+  clipboardList: { ios: "list.clipboard", fa: "clipboard-list" },
+  truck: { ios: "truck.box", fa: "truck" },
+  hourglassHalf: { ios: "hourglass", fa: "hourglass-half" },
+  unlink: { ios: "link", fa: "unlink" },
+  chartLine: { ios: "chart.xyaxis.line", fa: "chart-line" },
+  tag: { ios: "tag", fa: "tag" },
 } satisfies Record<string, { ios: SymbolViewProps["name"]; fa: string }>;
 
 export type AreaIconName = keyof typeof ICONS;

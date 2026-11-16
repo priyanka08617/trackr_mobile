@@ -2,6 +2,7 @@ import { AppButton } from "@/components/AppButton";
 import {
     AreaHeaderBackContext,
     AreaHeaderBackVisibleContext,
+    AreaHeaderTitleContext,
 } from "@/components/AreaHeaderBackContext";
 import { COLORS, FONT_SIZE, SPACING } from "@/constants/theme";
 import { Directory, File, Paths } from "expo-file-system";
@@ -111,8 +112,14 @@ export default function FasciaReportScreen() {
   const [message, setMessage] = useState<string>();
   const busy = useRef(false);
   const generation = useRef(0);
-  const backHandler = useContext(AreaHeaderBackContext);
+  const backHandlerRef = useContext(AreaHeaderBackContext);
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
+  const setHeaderTitle = useContext(AreaHeaderTitleContext);
+
+  useEffect(() => {
+    setHeaderTitle("Fascia Report");
+    return () => setHeaderTitle(null);
+  }, [setHeaderTitle]);
 
   const loadOptions = useCallback(async () => {
     setOptionsError(undefined);
@@ -157,13 +164,17 @@ export default function FasciaReportScreen() {
   }, []);
 
   useEffect(() => {
-    if (backHandler) backHandler.current = () => router.back();
+    const goBack = () => {
+      if (router.canGoBack()) router.back();
+      else router.replace("/area_manager/settings");
+    };
+    if (backHandlerRef) backHandlerRef.current = goBack;
     setBackVisible(true);
     return () => {
-      if (backHandler) backHandler.current = null;
+      if (backHandlerRef?.current === goBack) backHandlerRef.current = null;
       setBackVisible(false);
     };
-  }, [backHandler, setBackVisible]);
+  }, [backHandlerRef, setBackVisible]);
 
   const zones = useMemo(
     () => [...new Set(stores.map((s) => text(s.zone)))].sort(),

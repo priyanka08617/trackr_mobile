@@ -352,8 +352,8 @@ const styles = StyleSheet.create({
   drawerRow: { flex: 1, flexDirection: "row" },
   drawerBackdrop: { flex: 1 },
   menu: {
-    width: "86%",
-    maxWidth: 360,
+    width: "76%",
+    maxWidth: 310,
     backgroundColor: COLORS.primary,
     borderTopRightRadius: 24,
   },

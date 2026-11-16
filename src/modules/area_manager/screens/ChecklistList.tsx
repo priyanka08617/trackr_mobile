@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
   RefreshControl,
   ScrollView,
@@ -13,6 +13,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
 import { AppLoader } from "@/components/AppLoader";
+import {
+  AreaHeaderBackContext,
+  AreaHeaderBackVisibleContext,
+  AreaHeaderTitleContext,
+} from "@/components/AreaHeaderBackContext";
 
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
 
@@ -22,6 +27,9 @@ import { useRmChecklistData } from "./DataContext";
 const PAGE_SIZE = 50;
 
 export default function ChecklistList() {
+  const headerBackHandlerRef = useContext(AreaHeaderBackContext);
+  const setHeaderBackVisible = useContext(AreaHeaderBackVisibleContext);
+  const setHeaderTitle = useContext(AreaHeaderTitleContext);
   const {
     records,
     loading = false,
@@ -35,6 +43,22 @@ export default function ChecklistList() {
   const [removeCode, setRemoveCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<ChecklistNotice>();
+
+  useEffect(() => {
+    const goBack = () => {
+      if (router.canGoBack()) router.back();
+      else router.replace("/area_manager/settings");
+    };
+    if (headerBackHandlerRef) headerBackHandlerRef.current = goBack;
+    setHeaderBackVisible(true);
+    setHeaderTitle("RM Checklist");
+    return () => {
+      if (headerBackHandlerRef?.current === goBack)
+        headerBackHandlerRef.current = null;
+      setHeaderBackVisible(false);
+      setHeaderTitle(null);
+    };
+  }, [headerBackHandlerRef, setHeaderBackVisible, setHeaderTitle]);
 
   const filtered = records.filter((record) =>
     `${record.store} ${record.date} ${record.code} ${record.manager}`

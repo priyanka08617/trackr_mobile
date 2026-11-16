@@ -144,7 +144,7 @@ export default function Settings({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.surface },
-  grid: { padding: 10, gap: SPACING.md, paddingBottom: SPACING.md },
+  grid: { padding: 10, gap: SPACING.md, paddingBottom: SPACING.md,paddingTop:0 },
   row: { gap: SPACING.md },
   cell: { flex: 1, minWidth: 0 },
   back: { alignSelf: "flex-start", minHeight: 20 },

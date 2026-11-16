@@ -1,16 +1,16 @@
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
+import DateField from "@/components/DateField";
+import DataTable from "@/components/Table";
 import {
   AreaHeaderBackContext,
   AreaHeaderBackVisibleContext,
 } from "@/components/AreaHeaderBackContext";
-import AreaIcon from "@/components/AreaIcon";
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
 import { Directory, File, Paths } from "expo-file-system";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Platform,
   Pressable,
   StyleSheet,
@@ -24,82 +24,45 @@ import {
   type OmniReturnRecord,
   type OmniReturnStatus,
 } from "../services/OmniReturnService";
+import { today, validDate } from "../../report/services/service";
 import { prepareReportCsv } from "../services/reportCsv";
 
 import { isPickerCancellation } from "../services/trackerText";
 
 const PAGE_SIZE = 50;
+const OMNI_COLUMNS = [
+  { title: "#", width: 60 },
+  { title: "Order ID", width: 140 },
+  { title: "Store", width: 190 },
+  { title: "Site Code", width: 110 },
+  { title: "Month", width: 105 },
+  { title: "Marketplace", width: 150 },
+  { title: "Delivery Date", width: 130 },
+  { title: "AWB Status", width: 140 },
+  { title: "Region", width: 130 },
+  { title: "Zone", width: 130 },
+  { title: "Delivery Remark", width: 230 },
+  { title: "HO Final Remark", width: 230 },
+  { title: "Store Remark", width: 230 },
+  { title: "Submitted By", width: 150 },
+  { title: "Submitted On", width: 150 },
+  { title: "Status", width: 110 },
+];
 
 function value(text: string | number | null | undefined) {
-  return String(text ?? "").trim() || "—";
+  return String(text ?? "").trim() || "-";
 }
 
-function ReturnCard({
-  record,
-  status,
-}: {
-  record: OmniReturnRecord;
-  status: OmniReturnStatus;
-}) {
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardHeading}>
-        <View style={styles.orderIcon}>
-          <AreaIcon name="globe" size={19} />
-        </View>
-        <View style={styles.orderHeading}>
-          <Text style={styles.orderId}>Order {value(record.order_id)}</Text>
-          <Text style={styles.storeName}>
-            {value(record.store_name)} · {value(record.site_code)}
-          </Text>
-        </View>
-        <Text
-          style={[
-            styles.statusBadge,
-            status === "complete" ? styles.completeBadge : styles.pendingBadge,
-          ]}
-        >
-          {status === "complete" ? "Complete" : "Pending"}
-        </Text>
-      </View>
-      <View style={styles.details}>
-        <InfoRow label="Month" text={record.month} />
-        <InfoRow label="Marketplace" text={record.market_place} />
-        <InfoRow label="Delivery date" text={record.store_delivery_date} />
-        <InfoRow label="AWB status" text={record.awb_status} />
-        <InfoRow
-          label="Region / zone"
-          text={[record.region, record.zone].filter(Boolean).join(" / ")}
-        />
-        <InfoRow label="Delivery remark" text={record.delivery_remark} />
-        <InfoRow label="HO final remark" text={record.ho_final_remark} />
-        <InfoRow label="Store remark" text={record.store_remark} />
-        {status === "complete" && (
-          <InfoRow
-            label="Submitted"
-            text={[record.submitted_by, record.submitted_on]
-              .filter(Boolean)
-              .join(" · ")}
-          />
-        )}
-      </View>
-    </View>
-  );
+function addDays(date: string, days: number) {
+  if (!validDate(date)) return date;
+  const [year, month, day] = date.split("-").map(Number);
+  const result = new Date(Date.UTC(year, month - 1, day + days));
+  return `${result.getUTCFullYear()}-${String(result.getUTCMonth() + 1).padStart(2, "0")}-${String(result.getUTCDate()).padStart(2, "0")}`;
 }
 
-function InfoRow({
-  label,
-  text,
-}: {
-  label: string;
-  text?: string | number | null;
-}) {
-  return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoText}>{value(text)}</Text>
-    </View>
-  );
+function initialDateRange() {
+  const to = today();
+  return { from: addDays(to, -29), to };
 }
 
 export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
@@ -109,6 +72,9 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
   const [records, setRecords] = useState<OmniReturnRecord[]>([]);
   const [searchText, setSearchText] = useState("");
   const [search, setSearch] = useState("");
+  const [dateRange, setDateRange] = useState(initialDateRange);
+  const [appliedDateRange, setAppliedDateRange] = useState(initialDateRange);
+  const [dateError, setDateError] = useState<string>();
   const [total, setTotal] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -116,13 +82,18 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
   const [exportMessage, setExportMessage] = useState<string>();
   const [exporting, setExporting] = useState(false);
   const requestId = useRef(0);
+  const activeRequest = useRef<AbortController | null>(null);
 
   const fetchPage = useCallback(
     async (
       nextStatus: OmniReturnStatus,
       nextPage: number,
       nextSearch: string,
+      nextDates: { from: string; to: string },
     ) => {
+      activeRequest.current?.abort();
+      const controller = new AbortController();
+      activeRequest.current = controller;
       const currentRequest = ++requestId.current;
       setLoading(true);
       setRecords([]);
@@ -133,6 +104,9 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
           nextStatus,
           nextPage * PAGE_SIZE,
           nextSearch,
+          controller.signal,
+          nextDates.from,
+          nextDates.to,
         );
         if (currentRequest !== requestId.current) return;
         setRecords(page.records);
@@ -163,34 +137,69 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     setTotal(0);
     setExportMessage(undefined);
-    void fetchPage(status, 0, search);
+    void fetchPage(
+      status,
+      0,
+      status === "pending" ? search : "",
+      status === "complete" ? appliedDateRange : { from: "", to: "" },
+    );
 
     return () => {
       requestId.current += 1;
+      activeRequest.current?.abort();
+      activeRequest.current = null;
     };
-  }, [fetchPage, search, status]);
+  }, [appliedDateRange, fetchPage, search, status]);
 
   const submitSearch = useCallback(() => {
     const term = searchText.trim();
     if (term === search) {
-      void fetchPage(status, 0, search);
+      void fetchPage(status, 0, search, { from: "", to: "" });
     } else {
       setSearch(term);
     }
-  }, [fetchPage, search, searchText, status]);
+  }, [fetchPage, search, searchText]);
+
+  const applyDates = useCallback(() => {
+    const { from, to } = dateRange;
+    if (!validDate(from) || !validDate(to)) {
+      setDateError("Enter valid dates using YYYY-MM-DD.");
+      return;
+    }
+    if (from > to || to > today()) {
+      setDateError("Select dates with the end date on or after the start date.");
+      return;
+    }
+    if (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`) >= 30 * 86400000) {
+      setDateError("Select a date range of 30 days or less.");
+      return;
+    }
+    setDateError(undefined);
+    setAppliedDateRange({ from, to });
+  }, [dateRange]);
 
   const changePage = useCallback(
     (nextPage: number) => {
       if (!loading && nextPage >= 0 && nextPage * PAGE_SIZE < total) {
-        void fetchPage(status, nextPage, search);
+        void fetchPage(
+          status,
+          nextPage,
+          status === "pending" ? search : "",
+          status === "complete" ? appliedDateRange : { from: "", to: "" },
+        );
       }
     },
-    [fetchPage, loading, search, status, total],
+    [appliedDateRange, fetchPage, loading, search, status, total],
   );
 
   const changeStatus = useCallback(
     (nextStatus: OmniReturnStatus) => {
-      if (nextStatus !== status) setStatus(nextStatus);
+      if (nextStatus !== status) {
+        setSearchText("");
+        setSearch("");
+        setDateError(undefined);
+        setStatus(nextStatus);
+      }
     },
     [status],
   );
@@ -200,7 +209,12 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
     setExporting(true);
     setExportMessage(undefined);
     try {
-      const { csv, filename } = await exportOmniReturns(status, search);
+      const { csv, filename } = await exportOmniReturns(
+        status,
+        status === "pending" ? search : "",
+        status === "complete" ? appliedDateRange.from : "",
+        status === "complete" ? appliedDateRange.to : "",
+      );
       if (Platform.OS === "web") {
         const blob = new Blob([prepareReportCsv(csv)], {
           type: "text/csv;charset=utf-8",
@@ -254,44 +268,36 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
     } finally {
       setExporting(false);
     }
-  }, [exporting, search, status, total]);
+  }, [appliedDateRange, exporting, search, status, total]);
 
   return (
     <SafeAreaView edges={["left", "right", "bottom"]} style={styles.screen}>
-      <FlatList
-        data={records}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => <ReturnCard record={item} status={status} />}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.subtitle}>
-              Review return remarks for your assigned stores.
-            </Text>
-            <View style={styles.filters}>
-              {(["pending", "complete"] as const).map((item) => (
-                <Pressable
-                  key={item}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: status === item }}
-                  onPress={() => changeStatus(item)}
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <View style={styles.filters}>
+            {(["pending", "complete"] as const).map((item) => (
+              <Pressable
+                key={item}
+                accessibilityRole="button"
+                accessibilityState={{ selected: status === item }}
+                onPress={() => changeStatus(item)}
+                style={[
+                  styles.filter,
+                  status === item && styles.activeFilter,
+                ]}
+              >
+                <Text
                   style={[
-                    styles.filter,
-                    status === item && styles.activeFilter,
+                    styles.filterText,
+                    status === item && styles.activeFilterText,
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.filterText,
-                      status === item && styles.activeFilterText,
-                    ]}
-                  >
-                    {item === "pending" ? "Pending" : "Complete"}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+                  {item === "pending" ? "Pending" : "Complete"}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          {status === "pending" ? (
             <View style={styles.searchRow}>
               <AppInput
                 accessibilityLabel="Search Omni Return records"
@@ -308,81 +314,188 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
                 onPress={submitSearch}
                 style={styles.searchButton}
               />
+              <AppButton
+                title={exporting ? "Exporting..." : "Export"}
+                variant="outline"
+                onPress={() => void exportCsv()}
+                disabled={exporting || loading || total === 0}
+                style={styles.exportButton}
+              />
             </View>
-            <AppButton
-              title={exporting ? "Exporting…" : "Export CSV"}
-              variant="outline"
-              onPress={() => void exportCsv()}
-              disabled={exporting || loading || total === 0}
-              style={styles.exportButton}
-            />
-            {!!exportMessage && (
-              <Text style={styles.exportMessage}>{exportMessage}</Text>
-            )}
-            {!loading && !error && (
-              <Text style={styles.count}>
-                {records.length === 0
-                  ? "0 records"
-                  : `${pageIndex * PAGE_SIZE + 1}–${pageIndex * PAGE_SIZE + records.length} of ${total} records`}
-              </Text>
-            )}
-          </View>
-        }
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            {loading ? (
-              <ActivityIndicator color={COLORS.primary} />
-            ) : error ? (
-              <>
-                <Text accessibilityRole="alert" style={styles.error}>
-                  {error}
-                </Text>
+          ) : (
+            <>
+              <View style={styles.dateRow}>
+                <View style={styles.dateCell}>
+                  <DateField
+                    label="From date"
+                    value={dateRange.from}
+                    maxDate={today()}
+                    disabled={loading || exporting}
+                    onChange={(from) => {
+                      setDateError(undefined);
+                      setDateRange((current) => {
+                        const maxTo = [addDays(from, 29), today()].sort()[0];
+                        const to =
+                          !validDate(current.to) || current.to < from
+                            ? from
+                            : current.to > maxTo
+                              ? maxTo
+                              : current.to;
+                        return { from, to };
+                      });
+                    }}
+                  />
+                </View>
+                <View style={styles.dateCell}>
+                  <DateField
+                    label="To date"
+                    value={dateRange.to}
+                    minDate={dateRange.from || undefined}
+                    maxDate={
+                      validDate(dateRange.from)
+                        ? [addDays(dateRange.from, 29), today()].sort()[0]
+                        : today()
+                    }
+                    disabled={loading || exporting}
+                    onChange={(to) => {
+                      setDateError(undefined);
+                      setDateRange((current) => ({ ...current, to }));
+                    }}
+                  />
+                </View>
+              </View>
+              <View style={styles.dateActions}>
                 <AppButton
-                  title="Try again"
-                  onPress={() => void fetchPage(status, pageIndex, search)}
-                  style={styles.retry}
+                  title="Apply"
+                  onPress={applyDates}
+                  disabled={loading || exporting}
+                  style={styles.searchButton}
                 />
-              </>
-            ) : (
-              <Text style={styles.emptyText}>
-                No {status} Omni Return records found.
+                <AppButton
+                  title={exporting ? "Exporting..." : "Export"}
+                  variant="outline"
+                  onPress={() => void exportCsv()}
+                  disabled={exporting || loading || total === 0}
+                  style={styles.exportButton}
+                />
+              </View>
+              {dateError && (
+                <Text accessibilityRole="alert" style={styles.error}>
+                  {dateError}
+                </Text>
+              )}
+            </>
+          )}
+          {!!exportMessage && (
+            <Text style={styles.exportMessage}>{exportMessage}</Text>
+          )}
+          {error && (
+            <View style={styles.errorBox}>
+              <Text accessibilityRole="alert" style={styles.error}>
+                {error}
               </Text>
-            )}
-          </View>
-        }
-        ListFooterComponent={
-          total > PAGE_SIZE ? (
-            <View style={styles.pagination}>
               <AppButton
-                title="Previous"
-                variant="outline"
-                disabled={loading || pageIndex === 0}
-                onPress={() => changePage(pageIndex - 1)}
-                style={styles.pageButton}
-              />
-              <Text style={styles.pageLabel}>
-                Page {pageIndex + 1} of {Math.ceil(total / PAGE_SIZE)}
-              </Text>
-              <AppButton
-                title="Next"
-                variant="outline"
-                disabled={loading || (pageIndex + 1) * PAGE_SIZE >= total}
-                onPress={() => changePage(pageIndex + 1)}
-                style={styles.pageButton}
+                title="Try again"
+                  onPress={() =>
+                    void fetchPage(
+                      status,
+                      pageIndex,
+                      status === "pending" ? search : "",
+                      status === "complete"
+                        ? appliedDateRange
+                        : { from: "", to: "" },
+                    )
+                  }
+                style={styles.retry}
               />
             </View>
-          ) : null
-        }
-      />
+          )}
+          {!loading && !error && (
+            <Text style={styles.count}>
+              {records.length === 0
+                ? "0 records"
+                : `${pageIndex * PAGE_SIZE + 1} to ${pageIndex * PAGE_SIZE + records.length} of ${total} records`}
+            </Text>
+          )}
+        </View>
+        {loading && (
+          <ActivityIndicator color={COLORS.primary} style={styles.loader} />
+        )}
+        <View style={styles.table}>
+          <DataTable
+            columns={OMNI_COLUMNS}
+            rows={records.map((record) => ({ ...record, id: String(record.id) }))}
+            empty={
+              loading
+                ? "Loading Omni Return records..."
+                : error
+                  ? "Unable to load records."
+                  : `No ${status} Omni Return records found.`
+            }
+            renderCells={(record, index) => [
+              String(pageIndex * PAGE_SIZE + index + 1),
+              value(record.order_id),
+              value(record.store_name),
+              value(record.site_code),
+              value(record.month),
+              value(record.market_place),
+              value(record.store_delivery_date),
+              value(record.awb_status),
+              value(record.region),
+              value(record.zone),
+              value(record.delivery_remark),
+              value(record.ho_final_remark),
+              value(record.store_remark),
+              value(record.submitted_by),
+              value(record.submitted_on),
+              <Text
+                style={[
+                  styles.statusBadge,
+                  status === "complete"
+                    ? styles.completeBadge
+                    : styles.pendingBadge,
+                ]}
+              >
+                {status === "complete" ? "Complete" : "Pending"}
+              </Text>,
+            ]}
+          />
+        </View>
+        {total > PAGE_SIZE && (
+          <View style={styles.pagination}>
+            <AppButton
+              title="Previous"
+              variant="outline"
+              disabled={loading || pageIndex === 0}
+              onPress={() => changePage(pageIndex - 1)}
+              style={styles.pageButton}
+            />
+            <Text style={styles.pageLabel}>
+              Page {pageIndex + 1} of {Math.ceil(total / PAGE_SIZE)}
+            </Text>
+            <AppButton
+              title="Next"
+              variant="outline"
+              disabled={loading || (pageIndex + 1) * PAGE_SIZE >= total}
+              onPress={() => changePage(pageIndex + 1)}
+              style={styles.pageButton}
+            />
+          </View>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.surface },
-  content: { padding: SPACING.lg, paddingBottom: SPACING.xxl, gap: SPACING.md },
+  content: {
+    flex: 1,
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+    gap: SPACING.md,
+  },
   header: { gap: SPACING.sm, marginBottom: SPACING.xs },
-  subtitle: { color: COLORS.textLight, fontSize: FONT_SIZE.sm, lineHeight: 20 },
   filters: {
     flexDirection: "row",
     padding: 4,
@@ -404,36 +517,31 @@ const styles = StyleSheet.create({
     fontWeight: FONT_WEIGHT.semibold,
   },
   activeFilterText: { color: COLORS.white },
-  searchRow: { flexDirection: "row", alignItems: "flex-end", gap: SPACING.sm },
+  searchRow: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
+  dateRow: { flexDirection: "row", gap: SPACING.sm },
+  dateCell: { flex: 1, minWidth: 0 },
+  dateActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: SPACING.sm,
+  },
   searchInput: { flex: 1 },
-  searchButton: { minHeight: 48, paddingHorizontal: SPACING.md },
-  exportButton: { minHeight: 44, alignSelf: "flex-start" },
+  searchButton: { minHeight: 36, paddingVertical: 4, paddingHorizontal: SPACING.md },
+  exportButton: {
+    minHeight: 36,
+    paddingVertical: 4,
+    paddingHorizontal: SPACING.md,
+  },
   exportMessage: { color: COLORS.textLight, fontSize: FONT_SIZE.xs },
   count: { color: COLORS.textLight, fontSize: FONT_SIZE.xs },
-  card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 14,
+  table: {
+    flex: 1,
+    minHeight: 120,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: SPACING.md,
-    gap: SPACING.md,
   },
-  cardHeading: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
-  orderIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: "#f5e9eb",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  orderHeading: { flex: 1, gap: 2 },
-  orderId: {
-    color: COLORS.text,
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-  },
-  storeName: { color: COLORS.textLight, fontSize: FONT_SIZE.xs },
+  loader: { alignSelf: "center" },
+  errorBox: { alignItems: "flex-start", gap: SPACING.sm },
   statusBadge: {
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
@@ -444,26 +552,7 @@ const styles = StyleSheet.create({
   },
   pendingBadge: { color: "#805600", backgroundColor: "#fff1c7" },
   completeBadge: { color: "#166534", backgroundColor: "#dcfce7" },
-  details: { gap: SPACING.sm },
-  infoRow: { gap: 2 },
-  infoLabel: {
-    color: COLORS.textLight,
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-  },
-  infoText: { color: COLORS.text, fontSize: FONT_SIZE.sm, lineHeight: 20 },
-  empty: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: SPACING.xl,
-    gap: SPACING.md,
-  },
-  emptyText: {
-    color: COLORS.textLight,
-    textAlign: "center",
-    fontSize: FONT_SIZE.sm,
-  },
-  error: { color: COLORS.danger, textAlign: "center", fontSize: FONT_SIZE.sm },
+  error: { color: COLORS.danger, fontSize: FONT_SIZE.sm },
   retry: { minWidth: 140 },
   pagination: {
     flexDirection: "row",

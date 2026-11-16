@@ -65,9 +65,7 @@ export default function FestiveRoute() {
         await refresh();
       }}
       onUpdateAnswer={updateFestiveAnswer}
-      onBackPress={() =>
-        router.replace("/area_manager/all_register")
-      }
+      onBackPress={() => router.replace("/area_manager/settings")}
     />
   );
 }

@@ -2,7 +2,7 @@ import { AppButton } from "@/components/AppButton";
 import AreaIcon, { type AreaIconName } from "@/components/AreaIcon";
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
 import { Image } from "expo-image";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function ActionCard({
   title,
@@ -12,6 +12,8 @@ export default function ActionCard({
   homeStyle = false,
   homeImage,
   compactHome = false,
+  cardHeight,
+  centeredContent = false,
 }: {
   title: string;
   icon: AreaIconName;
@@ -20,6 +22,8 @@ export default function ActionCard({
   homeStyle?: boolean;
   homeImage?: number;
   compactHome?: boolean;
+  cardHeight?: number;
+  centeredContent?: boolean;
 }) {
   return (
     <View
@@ -61,26 +65,52 @@ export default function ActionCard({
           style={[styles.homeImage, compactHome && styles.compactHomeImage]}
         />
       )}
-      <AppButton
-        title={title}
-        accessibilityLabel={title}
-        onPress={onPress}
-        style={[
-          styles.card,
-          filled && styles.filled,
-          Boolean(homeStyle || homeImage) && styles.homeCard,
-          Boolean(homeImage) && styles.imageCard,
-          homeStyle && styles.imageCard,
-          compactHome && styles.compactHomeCard,
-        ]}
-        textStyle={[
-          styles.label,
-          filled && styles.filledLabel,
-          Boolean(homeStyle || homeImage) && styles.homeLabel,
-          Boolean(homeImage) && styles.imageLabel,
-        ]}
-      />
-      {!homeImage && (
+      {centeredContent ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={title}
+          onPress={onPress}
+          style={({ pressed }) => [
+            styles.card,
+            filled && styles.filled,
+            styles.centeredContentCard,
+            cardHeight ? { height: cardHeight } : undefined,
+            pressed && styles.pressedCard,
+          ]}
+        >
+          <View style={[styles.icon, filled && styles.filledIcon]}>
+            <AreaIcon
+              name={icon}
+              color={filled ? COLORS.white : COLORS.primary}
+              size={25}
+            />
+          </View>
+          <Text style={[styles.label, filled && styles.filledLabel]}>
+            {title}
+          </Text>
+        </Pressable>
+      ) : (
+        <AppButton
+          title={title}
+          accessibilityLabel={title}
+          onPress={onPress}
+          style={[
+            styles.card,
+            filled && styles.filled,
+            Boolean(homeStyle || homeImage) && styles.homeCard,
+            Boolean(homeImage) && styles.imageCard,
+            homeStyle && styles.imageCard,
+            compactHome && styles.compactHomeCard,
+          ]}
+          textStyle={[
+            styles.label,
+            filled && styles.filledLabel,
+            Boolean(homeStyle || homeImage) && styles.homeLabel,
+            Boolean(homeImage) && styles.imageLabel,
+          ]}
+        />
+      )}
+      {!homeImage && !centeredContent && (
         <View
           pointerEvents="none"
           style={[styles.iconPosition, homeStyle && styles.homeIconPosition]}
@@ -180,6 +210,17 @@ const styles = StyleSheet.create({
   },
   homeLabel: { color: "#3d3d3d", fontWeight: FONT_WEIGHT.bold },
   homeIcon: { backgroundColor: COLORS.transparent },
+  centeredContentCard: {
+    flex: 1,
+    flexDirection: "column",
+    justifyContent: "center",
+    gap: SPACING.sm,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.md,
+  },
+  pressedCard: {
+    opacity: 0.8,
+  },
   compactHomeCard: {
     // minHeight: 100,
     // paddingTop: 55,

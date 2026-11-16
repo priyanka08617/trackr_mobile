@@ -85,8 +85,12 @@ export default function ReportBankRoute() {
 
   // STEP 2: Initial loading and back navigation
   useEffect(() => {
+    const goBack = () => {
+      if (router.canGoBack()) router.back();
+      else router.replace("/common/home");
+    };
     if (backHandlerRef) {
-      backHandlerRef.current = () => router.back();
+      backHandlerRef.current = goBack;
     }
 
     setBackVisible(true);
@@ -94,7 +98,7 @@ export default function ReportBankRoute() {
     void loadReports();
 
     return () => {
-      if (backHandlerRef) {
+      if (backHandlerRef?.current === goBack) {
         backHandlerRef.current = null;
       }
 
