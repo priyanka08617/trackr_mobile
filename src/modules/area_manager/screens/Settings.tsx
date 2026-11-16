@@ -58,7 +58,7 @@ const SETTINGS_ROUTES: Partial<Record<SettingsCardId, Href>> = {
   "monthly-lp": "/common/monthly_lp_global_count",
   "fascia-plan": "/area_manager/fascia_plan",
   "fascia-report": "/common/fascia_report",
-  // "ho-checklist": "/area_manager/ho_checklist",
+  "ho-checklist": "/area_manager/ho_checklist",
 };
 
 const CARD_ICONS: Record<SettingsCardId, AreaIconName> = {
@@ -144,7 +144,7 @@ export default function Settings({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.surface },
-  grid: { padding: 10, gap: SPACING.md, paddingBottom: SPACING.md },
+  grid: { padding: 10, gap: SPACING.md, paddingBottom: SPACING.md,paddingTop:0 },
   row: { gap: SPACING.md },
   cell: { flex: 1, minWidth: 0 },
   back: { alignSelf: "flex-start", minHeight: 20 },

@@ -5,6 +5,7 @@ import { loadLocationFilterOptions } from "./locationFilters";
 import type { ReportColumn } from "./reportTableColumns";
 import { readApiJson } from "../../common/services/DashboardService";
 import { normalizeTrackerText } from "./trackerText";
+import type { AreaIconName } from "@/components/AreaIcon";
 
 const PAGE_SIZE = 50;
 
@@ -101,6 +102,7 @@ export type TrackerId = keyof typeof REPORT_ENDPOINTS;
 export interface TrackerLink {
   id: TrackerId;
   name: string;
+  icon?: AreaIconName;
   url?: string;
 }
 

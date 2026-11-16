@@ -30,7 +30,9 @@ import SelectField from "../../../components/SelectField";
 import {
     AreaHeaderActionContext,
     AreaHeaderBackContext,
-} from "../../report/services/AreaHeaderBackContext";
+    AreaHeaderBackVisibleContext,
+    AreaHeaderTitleContext,
+} from "@/components/AreaHeaderBackContext";
 import {
     getAnswerError,
     getScore,
@@ -67,6 +69,8 @@ export default function ChecklistForm() {
 
 function ChecklistFormContent({ data }: { data: RmChecklistData }) {
   const headerBackHandlerRef = useContext(AreaHeaderBackContext);
+  const setHeaderBackVisible = useContext(AreaHeaderBackVisibleContext);
+  const setHeaderTitle = useContext(AreaHeaderTitleContext);
   const setHeaderAction = useContext(AreaHeaderActionContext);
   const initialStore = data.stores.find(
     (store) => store.id === data.draft?.storeId,
@@ -219,14 +223,19 @@ function ChecklistFormContent({ data }: { data: RmChecklistData }) {
   );
 
   useEffect(() => {
-    if (!headerBackHandlerRef) return;
-    headerBackHandlerRef.current = () => {
+    const goBack = () => {
       if (!busy) request("leave");
     };
+    if (headerBackHandlerRef) headerBackHandlerRef.current = goBack;
+    setHeaderBackVisible(true);
+    setHeaderTitle("RM Checklist Form");
     return () => {
-      headerBackHandlerRef.current = null;
+      if (headerBackHandlerRef?.current === goBack)
+        headerBackHandlerRef.current = null;
+      setHeaderBackVisible(false);
+      setHeaderTitle(null);
     };
-  }, [headerBackHandlerRef, request, busy]);
+  }, [headerBackHandlerRef, request, busy, setHeaderBackVisible, setHeaderTitle]);
   const hasDraft = Boolean(data.draft || savedAnswers.length > 0);
   useEffect(() => {
     setHeaderAction(

@@ -3,6 +3,7 @@ import { AppButton } from "@/components/AppButton";
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
 import { DateTimePicker } from "@expo/ui/community/datetime-picker";
 import { Directory, File, Paths } from "expo-file-system";
+import { router } from "expo-router";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -22,7 +23,7 @@ import {
   AreaHeaderBackContext,
   AreaHeaderBackVisibleContext,
   AreaHeaderTitleContext,
-} from "../services/AreaHeaderBackContext";
+} from "@/components/AreaHeaderBackContext";
 import { prepareReportCsv } from "../services/reportCsv";
 import { exceedsTableDateRange } from "../services/reportDateRange";
 import {
@@ -48,27 +49,52 @@ import { isPickerCancellation } from "../services/trackerText";
 
 const PAGE_SIZE = 50;
 
+// const TRACKERS: TrackerLink[] = [
+//   { id: "fmcg_de", name: "FMCG D&E Tracker" },
+//   { id: "non_apps_dd", name: "Non-Apps D&D Tracker" },
+//   { id: "snap_up_dd", name: "SnapUp D&D Tracker" },
+//   { id: "beauty_dd", name: "Tracker for Beauty D&D / TESTER" },
+//   { id: "tso_dd", name: "TSO D&D" },
+//   { id: "store_incident_log", name: "Store Incident Log Tracker" },
+//   {
+//     id: "jewellery_hair_accessories_dd",
+//     name: "Jewellery & Hair Accessories D&D Register",
+//   },
+//   { id: "unloading_payment", name: "Load & Unload Payment Tracker" },
+//   { id: "canteen_fooding", name: "Canteen Fooding Tracker" },
+//   { id: "fmcg_price_mismatch", name: "FMCG Price Mismatch" },
+//   { id: "grt_packet_readiness", name: "GRT Packet Readiness Tracker" },
+//   { id: "ist_packet_readiness", name: "IST Packet Readiness Tracker" },
+//   { id: "near_to_expiry", name: "Near To Expiry" },
+//   { id: "damage_apparel", name: "Damage Apparel" },
+//   { id: "missing_tag", name: "Missing Tag" },
+//   { id: "sensor_tag", name: "Sensor Tag" },
+//   { id: "monthly_lp_global_count", name: "Monthly LP Global Count" },
+// ];
+
+
 const TRACKERS: TrackerLink[] = [
-  { id: "fmcg_de", name: "FMCG D&E Tracker" },
-  { id: "non_apps_dd", name: "Non-Apps D&D Tracker" },
-  { id: "snap_up_dd", name: "SnapUp D&D Tracker" },
-  { id: "beauty_dd", name: "Tracker for Beauty D&D / TESTER" },
-  { id: "tso_dd", name: "TSO D&D" },
-  { id: "store_incident_log", name: "Store Incident Log Tracker" },
+  { id: "fmcg_de", name: "FMCG D&E Tracker", icon: "shoppingCart" },
+  { id: "non_apps_dd", name: "Non-Apps D&D Tracker", icon: "clipboardList" },
+  { id: "snap_up_dd", name: "SnapUp D&D Tracker", icon: "calendar" },
+  { id: "beauty_dd", name: "Tracker for Beauty D&D / TESTER", icon: "gem" },
+  { id: "tso_dd", name: "TSO D&D", icon: "chartLine" },
+  { id: "store_incident_log", name: "Store Incident Log Tracker", icon: "archive" },
   {
     id: "jewellery_hair_accessories_dd",
     name: "Jewellery & Hair Accessories D&D Register",
+    icon: "palette",
   },
-  { id: "unloading_payment", name: "Load & Unload Payment Tracker" },
-  { id: "canteen_fooding", name: "Canteen Fooding Tracker" },
-  { id: "fmcg_price_mismatch", name: "FMCG Price Mismatch" },
-  { id: "grt_packet_readiness", name: "GRT Packet Readiness Tracker" },
-  { id: "ist_packet_readiness", name: "IST Packet Readiness Tracker" },
-  { id: "near_to_expiry", name: "Near To Expiry" },
-  { id: "damage_apparel", name: "Damage Apparel" },
-  { id: "missing_tag", name: "Missing Tag" },
-  { id: "sensor_tag", name: "Sensor Tag" },
-  { id: "monthly_lp_global_count", name: "Monthly LP Global Count" },
+  { id: "unloading_payment", name: "Load & Unload Payment Tracker", icon: "truckLoading" },
+  { id: "canteen_fooding", name: "Canteen Fooding Tracker", icon: "utensils" },
+  { id: "fmcg_price_mismatch", name: "FMCG Price Mismatch", icon: "tag" },
+  { id: "grt_packet_readiness", name: "GRT Packet Readiness Tracker", icon: "clipboardList" },
+  { id: "ist_packet_readiness", name: "IST Packet Readiness Tracker", icon: "boxOpen" },
+  { id: "near_to_expiry", name: "Near To Expiry", icon: "hourglassHalf" },
+  { id: "damage_apparel", name: "Damage Apparel", icon: "unlink" },
+  { id: "missing_tag", name: "Missing Tag", icon: "tag" },
+  { id: "sensor_tag", name: "Sensor Tag", icon: "magic" },
+  { id: "monthly_lp_global_count", name: "Monthly LP Global Count", icon: "globe" },
 ];
 
 function inputDate(date: Date): string {
@@ -707,7 +733,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
   );
 }
 
-export default function AllTrackers({ onBack }: { onBack: () => void }) {
+export default function AllTrackers({ onBack }: { onBack?: () => void }) {
   const backHandlerRef = useContext(AreaHeaderBackContext);
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
   const [selectedTracker, setSelectedTracker] = useState<TrackerLink>();
@@ -718,13 +744,24 @@ export default function AllTrackers({ onBack }: { onBack: () => void }) {
   }, [selectedTracker, setHeaderTitle]);
 
   const backToList = useCallback(() => setSelectedTracker(undefined), []);
-  const handleBack = selectedTracker ? backToList : onBack;
+  const handleBack = useCallback(() => {
+    if (selectedTracker) {
+      backToList();
+    } else if (onBack) {
+      onBack();
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/common/home");
+    }
+  }, [backToList, onBack, selectedTracker]);
 
   useEffect(() => {
     if (backHandlerRef) backHandlerRef.current = handleBack;
     setBackVisible(true);
     return () => {
-      if (backHandlerRef) backHandlerRef.current = null;
+      if (backHandlerRef?.current === handleBack)
+        backHandlerRef.current = null;
       setBackVisible(false);
     };
   }, [backHandlerRef, handleBack, setBackVisible]);
@@ -747,7 +784,9 @@ export default function AllTrackers({ onBack }: { onBack: () => void }) {
             <ActionCard
               filled
               title={item.name}
-              icon="report"
+              icon={item.icon ?? "report"}
+              cardHeight={170}
+              centeredContent
               onPress={() => setSelectedTracker(item)}
             />
           </View>

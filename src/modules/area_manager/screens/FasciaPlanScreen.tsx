@@ -170,7 +170,7 @@ export default function FasciaPlanScreen() {
       return;
     }
     if (router.canGoBack()) router.back();
-    else router.replace("/area_manager/fascia_plan");
+    else router.replace("/area_manager/settings");
   }, [actual, busy, loading, mode, returnToList]);
   useEffect(() => {
     if (backRef) backRef.current = goBack;

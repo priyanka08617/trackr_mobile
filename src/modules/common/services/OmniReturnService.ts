@@ -45,6 +45,7 @@ async function requestOmniReturns(
   params: URLSearchParams,
   accept: string,
   action: string,
+  signal?: AbortSignal,
 ) {
   const company = await getSavedCompany();
   const baseUrl = company?.api_url?.trim().replace(/\/+$/, "");
@@ -69,6 +70,7 @@ async function requestOmniReturns(
     response = await fetch(endpoint, {
       method: "GET",
       credentials: "omit",
+      signal,
       headers: {
         Accept: accept,
         Authorization: `Bearer ${token}`,
@@ -97,6 +99,9 @@ export async function loadOmniReturns(
   status: OmniReturnStatus,
   offset: number,
   search = "",
+  signal?: AbortSignal,
+  from = "",
+  to = "",
 ): Promise<OmniReturnPage> {
   const params = new URLSearchParams({
     status,
@@ -106,12 +111,15 @@ export async function loadOmniReturns(
 
   const term = search.trim();
   if (term) params.set("search", term);
+  if (from) params.set("from_date", from);
+  if (to) params.set("to_date", to);
 
   const { response, body } = await requestOmniReturns(
     "pending_omni_returns.php",
     params,
     "application/json",
     "list",
+    signal,
   );
 
   let payload: OmniReturnResponse;
@@ -155,11 +163,15 @@ export async function loadOmniReturns(
 export async function exportOmniReturns(
   status: OmniReturnStatus,
   search = "",
+  from = "",
+  to = "",
 ): Promise<{ csv: string; filename: string }> {
   const params = new URLSearchParams({ status });
 
   const term = search.trim();
   if (term) params.set("search", term);
+  if (from) params.set("from_date", from);
+  if (to) params.set("to_date", to);
 
   const { response, body } = await requestOmniReturns(
     "pending_omni_returns_export.php",

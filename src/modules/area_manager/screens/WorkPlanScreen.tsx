@@ -3,6 +3,7 @@ import { AppLoader } from "@/components/AppLoader";
 import {
   AreaHeaderBackContext,
   AreaHeaderBackVisibleContext,
+  AreaHeaderTitleContext,
 } from "@/components/AreaHeaderBackContext";
 import AreaIcon from "@/components/AreaIcon";
 import DateField from "@/components/DateField";
@@ -51,6 +52,11 @@ export default function WorkPlanScreen() {
   const [pendingBack, setPendingBack] = useState(false);
   const headerBackRef = useContext(AreaHeaderBackContext);
   const setHeaderBackVisible = useContext(AreaHeaderBackVisibleContext);
+  const setHeaderTitle = useContext(AreaHeaderTitleContext);
+  useEffect(() => {
+    setHeaderTitle("Work Plan / Travel Plan");
+    return () => setHeaderTitle(null);
+  }, [setHeaderTitle]);
   const leavePage = useCallback(() => {
     setPendingBack(false);
     setFormDirty(false);

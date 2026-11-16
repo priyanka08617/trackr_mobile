@@ -43,7 +43,7 @@ export const AREA_NAVIGATION = [
   { title: "Dashboard", href: "/area_manager/dashboard", icon: "dashboard" },
   { title: "Home", href: "/common/home", icon: "home" },
   { title: "Settings", href: "/area_manager/settings", icon: "setting" },
-  // { title: "Company FAQs", href: "/areamanger/company-faq", icon: "faq" },
+  { title: "Company FAQs", href: "/common/company_faq", icon: "faq" },
   { title: "Report", href: "/common/dump_report", icon: "report" },
 ] as const;
 
@@ -57,7 +57,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/common/dashboard": "Dashboard",
   "/common/home": "Home",
   "/area_manager/setting": "Settings",
-  // "/areamanger/company-faq": "Company FAQs",
+  "/areamanger/company-faq": "Company FAQs",
   "/common/dump_report": "Reports",
   // "/areamanger/all-portals": "All Portals Library",
   // "/areamanger/report-bank": "Reports Bank",
@@ -352,8 +352,8 @@ const styles = StyleSheet.create({
   drawerRow: { flex: 1, flexDirection: "row" },
   drawerBackdrop: { flex: 1 },
   menu: {
-    width: "86%",
-    maxWidth: 360,
+    width: "76%",
+    maxWidth: 310,
     backgroundColor: COLORS.primary,
     borderTopRightRadius: 24,
   },

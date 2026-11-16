@@ -69,7 +69,7 @@ export default function VoidScreen() {
   const [confirm, setConfirm] = useState<string[]>();
   const [notice, setNotice] = useState<string>();
   const lock = useRef(false);
-  const back = useContext(AreaHeaderBackContext);
+  const backRef = useContext(AreaHeaderBackContext);
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
   const setTitle = useContext(AreaHeaderTitleContext);
   useEffect(() => {
@@ -109,10 +109,10 @@ export default function VoidScreen() {
       setFilters(undefined);
       setSearch("");
     } else if (router.canGoBack()) router.back();
-    else router.replace("/area_manager/all_void");
+    else router.replace("/area_manager/settings");
   }, [filters]);
   useEffect(() => {
-    if (back) back.current = goBack;
+    if (backRef) backRef.current = goBack;
     setBackVisible(true);
     setTitle(
       filters
@@ -121,11 +121,11 @@ export default function VoidScreen() {
         : "All Void List",
     );
     return () => {
-      if (back) back.current = null;
+      if (backRef?.current === goBack) backRef.current = null;
       setBackVisible(false);
       setTitle(null);
     };
-  }, [back, filters, goBack, modules, setBackVisible, setTitle]);
+  }, [backRef, filters, goBack, modules, setBackVisible, setTitle]);
   function open(module: VoidModule, status: "pending" | "voided") {
     setSearch("");
     setFrom(today());

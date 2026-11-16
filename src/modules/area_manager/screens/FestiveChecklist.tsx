@@ -32,7 +32,8 @@ import {
 import {
   AreaHeaderBackContext,
   AreaHeaderBackVisibleContext,
-} from "../../report/services/AreaHeaderBackContext";
+  AreaHeaderTitleContext,
+} from "@/components/AreaHeaderBackContext";
 import { reportTableValue } from "../../report/services/reportTableFormat";
 import DataTable, { type FasciaColumn } from "./FasciaTable";
 import Settings from "./Settings";
@@ -135,8 +136,9 @@ export default function FestiveChecklist({
   );
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string>();
-  const headerBack = useContext(AreaHeaderBackContext);
+  const headerBackRef = useContext(AreaHeaderBackContext);
   const setHeaderBackVisible = useContext(AreaHeaderBackVisibleContext);
+  const setHeaderTitle = useContext(AreaHeaderTitleContext);
   const goBack = useCallback(() => {
     if (saving) return;
     if (selectedId) {
@@ -147,19 +149,24 @@ export default function FestiveChecklist({
   }, [onBackPress, saving, selectedId]);
   useEffect(() => {
     if (!embedded) return;
-    if (headerBack) headerBack.current = goBack;
+    if (headerBackRef) headerBackRef.current = goBack;
     setHeaderBackVisible(Boolean(selectedId || onBackPress));
+    setHeaderTitle(
+      selectedId ? "Festive Checklist Details" : "Festive Checklist",
+    );
     return () => {
-      if (headerBack) headerBack.current = null;
+      if (headerBackRef?.current === goBack) headerBackRef.current = null;
       setHeaderBackVisible(false);
+      setHeaderTitle(null);
     };
   }, [
     embedded,
     goBack,
-    headerBack,
+    headerBackRef,
     onBackPress,
     selectedId,
     setHeaderBackVisible,
+    setHeaderTitle,
   ]);
   const selected =
     (loadedDetail?.id === selectedId ? loadedDetail : undefined) ??
