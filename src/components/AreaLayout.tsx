@@ -1,7 +1,14 @@
 import { Image } from "expo-image";
 import { Slot, router, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useRef, useState, type ReactNode } from "react";
+// import { useCallback, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   Alert,
   Modal,
@@ -53,11 +60,11 @@ export const AREA_NAVIGATION = [
 // };
 
 const PAGE_TITLES: Record<string, string> = {
-  // "/area_manager": "Dashboard",
+  "/area_manager/dashboard": "Dashboard",
   "/common/dashboard": "Dashboard",
   "/common/home": "Home",
-  "/area_manager/setting": "Settings",
-  "/areamanger/company-faq": "Company FAQs",
+  "/area_manager/settings": "Settings",
+  "/common/company_faq": "Company FAQs",
   "/common/dump_report": "Reports",
   // "/areamanger/all-portals": "All Portals Library",
   // "/areamanger/report-bank": "Reports Bank",
@@ -102,6 +109,27 @@ export default function AreaLayout() {
     "Track R";
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString("en-GB", { hour12: false }); // "13:51:11"
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }); // "Monday, 16 November 2026"
+  };
 
   async function logout() {
     if (loggingOut) return;
@@ -183,6 +211,14 @@ export default function AreaLayout() {
                     <View style={styles.brand}>
                       <Image
                         accessible
+                        accessibilityLabel="Fox"
+                        source={require("../../assets/images/logo/fox.svg")}
+                        contentFit="contain"
+                        style={styles.foxLogo}
+                      />
+
+                      <Image
+                        accessible
                         accessibilityLabel="TrackR"
                         source={require("../../assets/images/logo/logo.svg")}
                         contentFit="contain"
@@ -200,6 +236,16 @@ export default function AreaLayout() {
                         <AreaIcon name="close" color={COLORS.white} size={20} />
                       </View>
                     </View>
+                  </View>
+                  <View style={styles.dateTimeSection}>
+                    {/* <Text style={styles.userNameText}>{userName}</Text> */}
+                    <Text style={styles.userNameText}>User</Text>
+                    <Text style={styles.clockText}>
+                      {formatTime(currentTime)}
+                    </Text>
+                    <Text style={styles.dateText}>
+                      {formatDate(currentTime)}
+                    </Text>
                   </View>
                   <Text style={styles.menuLabel}>NAVIGATION</Text>
                   {AREA_NAVIGATION.map((item) => (
@@ -296,11 +342,17 @@ const styles = StyleSheet.create({
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 5,
     paddingVertical: SPACING.md,
-    gap: SPACING.md,
+    gap: SPACING.lg,
   },
-  brand: { flex: 1 },
+  // brand: { flex: 1 },
+  brand: {
+  flex: 1,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: SPACING.sm,
+},
   headerTitle: {
     color: COLORS.white,
     fontSize: 22,
@@ -352,12 +404,12 @@ const styles = StyleSheet.create({
   drawerRow: { flex: 1, flexDirection: "row" },
   drawerBackdrop: { flex: 1 },
   menu: {
-    width: "76%",
-    maxWidth: 310,
+    width: "80%",
+    maxWidth: 320,
     backgroundColor: COLORS.primary,
     borderTopRightRadius: 24,
   },
-  menuContent: { padding: 20, gap: SPACING.sm },
+  menuContent: { padding: 15, gap: SPACING.sm },
   navRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -384,11 +436,12 @@ const styles = StyleSheet.create({
   drawerHeading: {
     flexDirection: "row",
     alignItems: "center",
-    marginHorizontal: -20,
+    marginHorizontal: 10,
     marginTop: -20,
-    paddingHorizontal: 20,
+    marginRight: -35,
+    paddingHorizontal: 32,
     paddingTop: SPACING.xl,
-    paddingBottom: SPACING.lg,
+    paddingBottom: SPACING.sm,
     gap: SPACING.sm,
     backgroundColor: COLORS.primary,
   },
@@ -402,7 +455,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.45)",
-    padding: SPACING.lg,
+    padding: SPACING.sm,
   },
   dialog: {
     ...CARD,
@@ -448,5 +501,38 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.md,
     textAlign: "center",
     lineHeight: 24,
+  },
+  dateTimeSection: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.15)",
+    marginBottom: SPACING.sm,
+    marginTop: 0,
+  },
+  userNameText: {
+    color: COLORS.white,
+    fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.bold,
+    // textTransform: "uppercase",
+    marginBottom: SPACING.xs,
+  },
+  clockText: {
+    color: COLORS.white,
+    fontSize: 24,
+    fontWeight: FONT_WEIGHT.medium,
+    marginBottom: 4,
+  },
+  dateText: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.medium,
+  },
+
+  foxLogo: {
+    width: 48,
+    height: 48,
+    marginLeft:-35
   },
 });
