@@ -8,14 +8,16 @@ import {
 } from "@/components/AreaHeaderBackContext";
 import DateField from "@/components/DateField";
 import SelectField from "@/components/SelectField";
-import { CARD, COLORS, SPACING } from "@/constants/theme";
+import { COLORS, SPACING } from "@/constants/theme";
 import { router } from "expo-router";
+import DynamicDataTable from "@/components/DynamicAutoDataTable";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -42,14 +44,6 @@ const display = (value: unknown) =>
   String(value).startsWith("0000-00-00")
     ? "-"
     : trackerPlainText(value);
-function Info({ label, value }: { label: string; value: unknown }) {
-  return (
-    <View style={styles.info}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{display(value)}</Text>
-    </View>
-  );
-}
 export default function VoidScreen() {
   const [modules, setModules] = useState<VoidModule[]>([]);
   const [regions, setRegions] = useState<string[]>([]);
@@ -61,7 +55,6 @@ export default function VoidScreen() {
   const [to, setTo] = useState(today);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
-  const [expanded, setExpanded] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -77,7 +70,6 @@ export default function VoidScreen() {
     setLoading(true);
     setError(undefined);
     setSelected([]);
-    setExpanded([]);
     setRecords([]);
     const task = filters
       ? loadVoidRecords(filters).then((result) => {
@@ -287,7 +279,7 @@ export default function VoidScreen() {
           key={filters.table}
           data={records}
           keyExtractor={(item) => item.id}
-          extraData={{ selected, expanded, busy }}
+          extraData={{ selected, busy }}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           refreshing={loading}
@@ -376,23 +368,220 @@ export default function VoidScreen() {
               />
               {banner}
               <Text style={styles.label}>{total} records</Text>
-              {filters.status === "pending" && records.length > 0 && (
-                <AppButton
-                  title={
-                    selected.length === records.length
-                      ? "Clear selection"
-                      : "Select this page"
-                  }
-                  variant="outline"
-                  disabled={busy || loading}
-                  onPress={() =>
-                    setSelected(
-                      selected.length === records.length
-                        ? []
-                        : records.map((record) => record.id),
-                    )
-                  }
-                />
+
+              {records.length > 0 && (
+                <View style={styles.tableContainer}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator
+                    nestedScrollEnabled
+                  >
+                    <View>
+                      <View style={[styles.tableRow, styles.tableHeader]}>
+                        {filters.status === "pending" && (
+                          <View style={styles.selectColumn}>
+                            <Pressable
+                              accessibilityRole="checkbox"
+                              accessibilityLabel={
+                                selected.length === records.length
+                                  ? "Deselect all records on this page"
+                                  : "Select all records on this page"
+                              }
+                              accessibilityState={{
+                                checked:
+                                  records.length > 0 &&
+                                  selected.length === records.length,
+                                disabled: busy || loading,
+                              }}
+                              disabled={busy || loading}
+                              style={styles.checkbox}
+                              onPress={() =>
+                                setSelected(
+                                  selected.length === records.length
+                                    ? []
+                                    : records.map((record) => record.id),
+                                )
+                              }
+                            >
+                              <Text style={styles.headerCheckbox}>
+                                {records.length > 0 &&
+                                selected.length === records.length
+                                  ? "☑"
+                                  : "☐"}
+                              </Text>
+                            </Pressable>
+                          </View>
+                        )}
+                        <Text style={[styles.headerText, styles.serialColumn]}>
+                          #
+                        </Text>
+                        <Text style={[styles.headerText, styles.storeColumn]}>
+                          Store
+                        </Text>
+                        <Text style={[styles.headerText, styles.regionColumn]}>
+                          Region / Zone
+                        </Text>
+                        <Text style={[styles.headerText, styles.requestColumn]}>
+                          Requested By / On
+                        </Text>
+                        <Text style={[styles.headerText, styles.reasonColumn]}>
+                          Void Reason / Remark
+                        </Text>
+                        {filters.status === "voided" && (
+                          <Text
+                            style={[styles.headerText, styles.requestColumn]}
+                          >
+                            Approved By / On
+                          </Text>
+                        )}
+                        {records
+                          .flatMap((record) => record.fields)
+                          .filter(
+                            (field, index, all) =>
+                              all.findIndex(
+                                (candidate) => candidate.label === field.label,
+                              ) === index,
+                          )
+                          .map((field) => (
+                            <Text
+                              key={field.label}
+                              style={[styles.headerText, styles.dynamicColumn]}
+                            >
+                              {field.label}
+                            </Text>
+                          ))}
+                        {records.some((record) => record.product_count > 0) && (
+                          <Text
+                            style={[styles.headerText, styles.requestColumn]}
+                          >
+                            Exchange Products
+                          </Text>
+                        )}
+                        <Text style={[styles.headerText, styles.actionColumn]}>
+                          Status
+                        </Text>
+                      </View>
+                      {records.map((item, index) => (
+                        <View
+                          key={item.id}
+                          style={[
+                            styles.tableRow,
+                            index % 2 === 1 && styles.alternateRow,
+                          ]}
+                        >
+                          {filters.status === "pending" && (
+                            <View style={styles.selectColumn}>
+                              <Pressable
+                                accessibilityRole="checkbox"
+                                accessibilityLabel={`Select void request for ${display(item.store_name)}`}
+                                accessibilityState={{
+                                  checked: selected.includes(item.id),
+                                  disabled: busy || loading,
+                                }}
+                                disabled={busy || loading}
+                                style={styles.checkbox}
+                                onPress={() =>
+                                  setSelected((current) =>
+                                    current.includes(item.id)
+                                      ? current.filter((id) => id !== item.id)
+                                      : [...current, item.id],
+                                  )
+                                }
+                              >
+                                <Text style={styles.CheckcellText}>
+                                  {selected.includes(item.id) ? "☑" : "☐"}
+                                </Text>
+                              </Pressable>
+                            </View>
+                          )}
+                          <Text style={[styles.cellText, styles.serialColumn]}>
+                            {(filters.page - 1) * 20 + index + 1}
+                          </Text>
+                          <Text style={[styles.cellText, styles.storeColumn]}>
+                            {display(item.store_name)}
+                          </Text>
+                          <Text style={[styles.cellText, styles.regionColumn]}>
+                            {display(item.region)} / {display(item.zone)}
+                          </Text>
+                          <View style={styles.requestColumn}>
+                            <Text style={styles.cellText}>
+                              {display(item.requested_by)}
+                            </Text>
+                            <Text style={styles.subText}>
+                              {display(item.requested_on)}
+                            </Text>
+                          </View>
+                          <View style={styles.reasonColumn}>
+                            <Text style={styles.cellText}>
+                              {display(item.reason)}
+                            </Text>
+                            <Text style={styles.subText}>
+                              {display(item.remark)}
+                            </Text>
+                          </View>
+                          {filters.status === "voided" && (
+                            <View style={styles.requestColumn}>
+                              <Text style={styles.cellText}>
+                                {display(item.approved_by)}
+                              </Text>
+                              <Text style={styles.subText}>
+                                {display(item.approved_on)}
+                              </Text>
+                            </View>
+                          )}
+                          {records
+                            .flatMap((record) => record.fields)
+                            .filter(
+                              (field, fieldIndex, all) =>
+                                all.findIndex(
+                                  (candidate) =>
+                                    candidate.label === field.label,
+                                ) === fieldIndex,
+                            )
+                            .map((field) => (
+                              <Text
+                                key={field.label}
+                                style={[styles.cellText, styles.dynamicColumn]}
+                              >
+                                {display(
+                                  item.fields.find(
+                                    (itemField) =>
+                                      itemField.label === field.label,
+                                  )?.value,
+                                )}
+                              </Text>
+                            ))}
+                          {records.some(
+                            (record) => record.product_count > 0,
+                          ) && (
+                            <Text
+                              style={[styles.cellText, styles.requestColumn]}
+                            >
+                              {item.product_count || 0}
+                            </Text>
+                          )}
+                          <View style={styles.actionColumn}>
+                            <Text
+                              style={[
+                                styles.statusText,
+                                {
+                                  color:
+                                    filters.status === "pending"
+                                      ? COLORS.danger
+                                      : COLORS.success,
+                                },
+                              ]}
+                            >
+                              {filters.status === "pending"
+                                ? "Pending"
+                                : "Voided"}
+                            </Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
               )}
             </View>
           }
@@ -407,120 +596,97 @@ export default function VoidScreen() {
               </Text>
             ) : null
           }
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.heading}>
-                <Text style={[styles.title, styles.column]}>
-                  {display(item.store_name)}
-                </Text>
-                <Text
-                  style={[
-                    styles.badge,
-                    {
-                      backgroundColor:
-                        filters.status === "pending"
-                          ? COLORS.danger
-                          : COLORS.success,
-                    },
-                  ]}
-                >
-                  {filters.status === "pending" ? "Pending" : "Voided"}
-                </Text>
-              </View>
-              <Text style={styles.label}>
-                {display(item.region)} · {display(item.zone)}
-              </Text>
-              <Info label="Requested By" value={item.requested_by} />
-              <Info label="Requested On" value={item.requested_on} />
-              <Info label="Void Reason" value={item.reason} />
-              <Info label="Void Remark" value={item.remark} />
-              {item.product_count > 0 && (
-                <Text style={styles.label}>
-                  {item.product_count} exchange products
-                </Text>
-              )}
-              {filters.status === "voided" && (
-                <>
-                  <Info label="Approved By" value={item.approved_by} />
-                  <Info label="Approved On" value={item.approved_on} />
-                </>
-              )}
-              {expanded.includes(item.id) &&
-                item.fields.map((field, index) => (
-                  <Info
-                    key={`${index}-${field.label}`}
-                    label={field.label}
-                    value={field.value}
-                  />
-                ))}
-              <AppButton
-                title={
-                  expanded.includes(item.id) ? "Hide Details" : "View Details"
-                }
-                variant="outline"
-                onPress={() =>
-                  setExpanded((current) =>
-                    current.includes(item.id)
-                      ? current.filter((id) => id !== item.id)
-                      : [...current, item.id],
-                  )
-                }
-              />
-              {filters.status === "pending" && (
-                <Pressable
-                  accessibilityRole="checkbox"
-                  accessibilityLabel={`Select void request for ${display(item.store_name)}`}
-                  accessibilityState={{
-                    checked: selected.includes(item.id),
-                    disabled: busy || loading,
-                  }}
-                  disabled={busy || loading}
-                  style={styles.checkbox}
-                  onPress={() =>
-                    setSelected((current) =>
-                      current.includes(item.id)
-                        ? current.filter((id) => id !== item.id)
-                        : [...current, item.id],
-                    )
-                  }
-                >
-                  <Text style={styles.value}>
-                    {selected.includes(item.id) ? "☑" : "☐"} Select for approval
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          )}
+          renderItem={() => null}
           ListFooterComponent={
             total > 0 && !error ? (
-              <View style={styles.pagination}>
-                <AppButton
-                  title="Previous"
-                  variant="outline"
-                  disabled={loading || busy || filters.page <= 1}
-                  onPress={() =>
-                    setFilters((current) =>
-                      current
-                        ? { ...current, page: current.page - 1 }
-                        : current,
-                    )
-                  }
-                />
-                <Text style={styles.label}>
-                  Page {filters.page} of {Math.max(1, Math.ceil(total / 20))}
+              <View style={styles.paginationContainer}>
+                <Text style={styles.pageLabel}>
+                  Page {filters.page} of {Math.max(1, Math.ceil(total / 20))} |{" "}
+                  {(filters.page - 1) * 20 + 1}-
+                  {Math.min(filters.page * 20, total)} of {total}
                 </Text>
-                <AppButton
-                  title="Next"
-                  variant="outline"
-                  disabled={loading || busy || filters.page * 20 >= total}
-                  onPress={() =>
-                    setFilters((current) =>
-                      current
-                        ? { ...current, page: current.page + 1 }
-                        : current,
-                    )
-                  }
-                />
+                <View style={styles.pagination}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Previous page"
+                    accessibilityState={{
+                      disabled: loading || busy || filters.page <= 1,
+                    }}
+                    style={({ pressed }) => [
+                      styles.pageButton,
+                      (loading || busy || filters.page <= 1) &&
+                        styles.pageButtonDisabled,
+                      pressed && styles.pageButtonPressed,
+                    ]}
+                    disabled={loading || busy || filters.page <= 1}
+                    onPress={() =>
+                      setFilters((current) =>
+                        current
+                          ? { ...current, page: current.page - 1 }
+                          : current,
+                      )
+                    }
+                  >
+                    <Text style={styles.pageButtonText}>‹</Text>
+                  </Pressable>
+                  {Array.from(
+                    { length: Math.max(1, Math.ceil(total / 20)) },
+                    (_, index) => index + 1,
+                  ).map((page) => (
+                    <Pressable
+                      key={page}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Page ${page}${filters.page === page ? ", current page" : ""}`}
+                      accessibilityState={{
+                        selected: filters.page === page,
+                        disabled: loading || busy,
+                      }}
+                      style={({ pressed }) => [
+                        styles.pageButton,
+                        filters.page === page && styles.pageButtonCurrent,
+                        pressed && styles.pageButtonPressed,
+                      ]}
+                      disabled={loading || busy || filters.page === page}
+                      onPress={() =>
+                        setFilters((current) =>
+                          current ? { ...current, page } : current,
+                        )
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.pageButtonText,
+                          filters.page === page && styles.pageButtonCurrentText,
+                        ]}
+                      >
+                        {page}
+                      </Text>
+                    </Pressable>
+                  ))}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Next page"
+                    accessibilityState={{
+                      disabled: loading || busy || filters.page * 20 >= total,
+                    }}
+                    style={({ pressed }) => [
+                      styles.pageButton,
+                      (loading || busy || filters.page * 20 >= total) &&
+                        styles.pageButtonDisabled,
+                      pressed && styles.pageButtonPressed,
+                    ]}
+                    disabled={loading || busy || filters.page * 20 >= total}
+                    onPress={() =>
+                      setFilters((current) =>
+                        current
+                          ? { ...current, page: current.page + 1 }
+                          : current,
+                      )
+                    }
+                  >
+                    <Text style={styles.pageButtonText}>›</Text>
+                  </Pressable>
+                </View>
               </View>
             ) : null
           }
@@ -559,7 +725,59 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.surface },
   content: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: SPACING.xxl },
   stack: { gap: SPACING.md },
-  card: { ...CARD, borderRadius: 12, gap: SPACING.sm },
+  tableContainer: {
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: COLORS.white,
+  },
+  tableRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    minHeight: 58,
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+  },
+  tableHeader: { backgroundColor: COLORS.primary, minHeight: 48 },
+  alternateRow: { backgroundColor: COLORS.surface },
+  serialColumn: { width: 56, paddingHorizontal: SPACING.sm },
+  selectColumn: {
+    width: 72,
+    paddingHorizontal: SPACING.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  storeColumn: { width: 170, padding: SPACING.sm },
+  regionColumn: { width: 150, padding: SPACING.sm },
+  requestColumn: {
+    width: 160,
+    padding: SPACING.sm,
+  },
+  reasonColumn: {
+    width: 210,
+    padding: SPACING.sm,
+  },
+  actionColumn: {
+    width: 190,
+    padding: SPACING.sm,
+    gap: 4,
+  },
+  headerText: {
+    color: COLORS.white,
+    fontSize: 13,
+    fontWeight: "700",
+    paddingVertical: SPACING.sm,
+    borderRightWidth: 1,
+    borderRightColor: COLORS.border,
+  },
+  headerCheckbox: { color: COLORS.white, fontSize: 20, fontWeight: "700" },
+  cellText: { color: COLORS.text, fontSize: 14 },
+  CheckcellText: { color: COLORS.text, fontSize: 20 },
+  subText: { color: COLORS.textLight, fontSize: 11, marginTop: 3 },
+  statusText: { fontWeight: "700", fontSize: 13 },
+  dynamicColumn: { width: 160, padding: SPACING.sm },
   row: { flexDirection: "row", gap: SPACING.sm },
   column: { flex: 1, minWidth: 0 },
   moduleRow: { gap: SPACING.md },
@@ -651,13 +869,31 @@ const styles = StyleSheet.create({
   info: { gap: 4 },
   checkbox: { minHeight: 44, justifyContent: "center" },
   error: { color: COLORS.danger },
+  paginationContainer: { gap: SPACING.sm, paddingVertical: SPACING.sm },
+  pageLabel: { color: COLORS.textLight, fontSize: 12, textAlign: "center" },
   pagination: {
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: SPACING.sm,
+    justifyContent: "center",
+    gap: SPACING.xs,
   },
+  pageButton: {
+    minWidth: 38,
+    height: 40,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: 6,
+    backgroundColor: COLORS.white,
+  },
+  pageButtonCurrent: { backgroundColor: COLORS.primary },
+  pageButtonDisabled: { opacity: 0.4 },
+  pageButtonPressed: { opacity: 0.7 },
+  pageButtonText: { color: COLORS.primary, fontSize: 14, fontWeight: "600" },
+  pageButtonCurrentText: { color: COLORS.white },
   footer: {
     padding: SPACING.md,
     backgroundColor: COLORS.white,

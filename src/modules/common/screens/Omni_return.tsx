@@ -30,6 +30,7 @@ import { prepareReportCsv } from "../services/reportCsv";
 import { isPickerCancellation } from "../services/trackerText";
 
 const PAGE_SIZE = 50;
+const NO_DATE_RANGE = { from: "", to: "" };
 const OMNI_COLUMNS = [
   { title: "#", width: 60 },
   { title: "Order ID", width: 140 },
@@ -74,6 +75,8 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
   const [search, setSearch] = useState("");
   const [dateRange, setDateRange] = useState(initialDateRange);
   const [appliedDateRange, setAppliedDateRange] = useState(initialDateRange);
+  const [pendingDateFilterApplied, setPendingDateFilterApplied] =
+    useState(false);
   const [dateError, setDateError] = useState<string>();
   const [total, setTotal] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
@@ -83,6 +86,10 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
   const [exporting, setExporting] = useState(false);
   const requestId = useRef(0);
   const activeRequest = useRef<AbortController | null>(null);
+  const requestDateRange =
+    status === "pending" && !pendingDateFilterApplied
+      ? NO_DATE_RANGE
+      : appliedDateRange;
 
   const fetchPage = useCallback(
     async (
@@ -141,7 +148,7 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
       status,
       0,
       status === "pending" ? search : "",
-      status === "complete" ? appliedDateRange : { from: "", to: "" },
+      requestDateRange,
     );
 
     return () => {
@@ -149,16 +156,16 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
       activeRequest.current?.abort();
       activeRequest.current = null;
     };
-  }, [appliedDateRange, fetchPage, search, status]);
+  }, [fetchPage, requestDateRange, search, status]);
 
   const submitSearch = useCallback(() => {
     const term = searchText.trim();
     if (term === search) {
-      void fetchPage(status, 0, search, { from: "", to: "" });
+      void fetchPage(status, 0, search, requestDateRange);
     } else {
       setSearch(term);
     }
-  }, [fetchPage, search, searchText]);
+  }, [fetchPage, requestDateRange, search, searchText, status]);
 
   const applyDates = useCallback(() => {
     const { from, to } = dateRange;
@@ -176,6 +183,7 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
     }
     setDateError(undefined);
     setAppliedDateRange({ from, to });
+    setPendingDateFilterApplied(true);
   }, [dateRange]);
 
   const changePage = useCallback(
@@ -185,11 +193,11 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
           status,
           nextPage,
           status === "pending" ? search : "",
-          status === "complete" ? appliedDateRange : { from: "", to: "" },
+          requestDateRange,
         );
       }
     },
-    [appliedDateRange, fetchPage, loading, search, status, total],
+    [fetchPage, loading, requestDateRange, search, status, total],
   );
 
   const changeStatus = useCallback(
@@ -198,6 +206,7 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
         setSearchText("");
         setSearch("");
         setDateError(undefined);
+        setPendingDateFilterApplied(false);
         setStatus(nextStatus);
       }
     },
@@ -212,8 +221,8 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
       const { csv, filename } = await exportOmniReturns(
         status,
         status === "pending" ? search : "",
-        status === "complete" ? appliedDateRange.from : "",
-        status === "complete" ? appliedDateRange.to : "",
+        requestDateRange.from,
+        requestDateRange.to,
       );
       if (Platform.OS === "web") {
         const blob = new Blob([prepareReportCsv(csv)], {
@@ -268,7 +277,7 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
     } finally {
       setExporting(false);
     }
-  }, [appliedDateRange, exporting, search, status, total]);
+  }, [exporting, requestDateRange, search, status, total]);
 
   return (
     <SafeAreaView edges={["left", "right", "bottom"]} style={styles.screen}>
@@ -297,7 +306,7 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
               </Pressable>
             ))}
           </View>
-          {status === "pending" ? (
+          {status === "pending" && (
             <View style={styles.searchRow}>
               <AppInput
                 accessibilityLabel="Search Omni Return records"
@@ -322,7 +331,8 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
                 style={styles.exportButton}
               />
             </View>
-          ) : (
+          )}
+          {status === "complete" && (
             <>
               <View style={styles.dateRow}>
                 <View style={styles.dateCell}>
@@ -401,9 +411,7 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
                       status,
                       pageIndex,
                       status === "pending" ? search : "",
-                      status === "complete"
-                        ? appliedDateRange
-                        : { from: "", to: "" },
+                      requestDateRange,
                     )
                   }
                 style={styles.retry}
@@ -446,7 +454,7 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
               value(record.delivery_remark),
               value(record.ho_final_remark),
               value(record.store_remark),
-              value(record.submitted_by),
+              value(record.s1_name || record.submitted_by),
               value(record.submitted_on),
               <Text
                 style={[

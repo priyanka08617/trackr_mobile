@@ -157,6 +157,6 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, padding: 6 },
   cell: { flexGrow: 1, flexBasis: "45%", minWidth: 0 },
 });

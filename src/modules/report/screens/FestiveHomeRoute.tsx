@@ -106,7 +106,7 @@ export default function FestiveHomeRoute() {
         setReport(undefined);
         setError(undefined);
       } else if (router.canGoBack()) router.back();
-      else router.replace("/area_manager/all_register");
+      else router.replace("/common/home");
     };
     if (backHandlerRef) backHandlerRef.current = goBack;
     setBackVisible(true);

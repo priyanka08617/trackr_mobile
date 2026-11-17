@@ -9,7 +9,6 @@ import {
   View,
 } from "react-native";
 
-import { Image } from "expo-image";
 import * as WebBrowser from "expo-web-browser";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -32,9 +31,6 @@ import {
   loadImportantGuidelines,
   type GuidelineDocument,
 } from "../services/library_of_important_guidelines_service";
-
-// Assets
-// const PDF_ICON = require("../assets/images/guideline-pdf.png");
 
 // Types
 type Props = {
@@ -181,11 +177,7 @@ export default function ImportantGuidelines({ onBack }: Props) {
         style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       >
         <View style={styles.iconContainer}>
-          <Image
-            // source={PDF_ICON}
-            contentFit="contain"
-            style={styles.documentImage}
-          />
+          <AreaIcon name="pdf" color={COLORS.danger} size={24} />
         </View>
 
         <View style={styles.info}>
@@ -362,11 +354,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5e9eb",
     alignItems: "center",
     justifyContent: "center",
-  },
-
-  documentImage: {
-    width: 34,
-    height: 34,
   },
 
   info: {

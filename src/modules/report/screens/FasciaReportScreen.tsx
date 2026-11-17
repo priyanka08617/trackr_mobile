@@ -555,7 +555,7 @@ export default function FasciaReportScreen() {
         showsHorizontalScrollIndicator
       >
         <View>
-          {tableHeader}
+          {(report?.records.length ?? 0) > 0 && tableHeader}
           <FlatList
             data={report?.records ?? []}
             keyExtractor={(item) => String(item.id)}
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
   filtersScroll: {
     paddingHorizontal: SPACING.md,
     paddingTop: SPACING.md,
-    maxHeight: 340,
+    maxHeight: 300,
   },
   form: {
     gap: SPACING.sm,
@@ -630,7 +630,8 @@ const styles = StyleSheet.create({
 
   tableScroll: {
     flex: 1,
-    margin: SPACING.sm,
+    marginHorizontal: SPACING.sm,
+    marginBottom: SPACING.sm,
     borderTopWidth: 1,
     borderColor: COLORS.border,
   },
