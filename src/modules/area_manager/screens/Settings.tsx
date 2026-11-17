@@ -3,10 +3,14 @@ import { Alert, FlatList, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import ActionCard from "@/components/ActionCard";
-import { AppButton } from "@/components/AppButton";
 import type { AreaIconName } from "@/components/AreaIcon";
+import {
+  AreaHeaderBackContext,
+  AreaHeaderBackVisibleContext,
+} from "@/components/AreaHeaderBackContext";
 import { COLORS, SPACING } from "@/constants/theme";
 import { router, type Href } from "expo-router";
+import { useContext, useEffect } from "react";
 
 export const SETTINGS_CARDS = [
   {
@@ -83,6 +87,26 @@ export default function Settings({
   onOpenCard,
   embedded = false,
 }: SettingsProps) {
+  const backHandlerRef = useContext(AreaHeaderBackContext);
+  const setBackVisible = useContext(AreaHeaderBackVisibleContext);
+  const handleBackPress = onBackPress ?? (() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/area_manager/dashboard");
+    }
+  });
+
+  useEffect(() => {
+    if (embedded) return;
+    if (backHandlerRef) backHandlerRef.current = handleBackPress;
+    setBackVisible(true);
+    return () => {
+      if (backHandlerRef) backHandlerRef.current = null;
+      setBackVisible(false);
+    };
+  }, [backHandlerRef, embedded, handleBackPress, setBackVisible]);
+
   function openCard(card: (typeof SETTINGS_CARDS)[number]) {
     const customOpen = onOpenCard?.[card.id];
 
@@ -106,27 +130,16 @@ export default function Settings({
       edges={
         embedded
           ? ["left", "right", "bottom"]
-          : ["top", "left", "right", "bottom"]
+          : ["left", "right", "bottom"]
       }
       style={styles.screen}
     >
-      {!embedded && <StatusBar style="dark" />}
       <FlatList
         data={SETTINGS_CARDS}
         keyExtractor={(item) => item.id}
         numColumns={2}
         contentContainerStyle={styles.grid}
         columnWrapperStyle={styles.row}
-        ListHeaderComponent={
-          onBackPress ? (
-            <AppButton
-              title="Back"
-              variant="outline"
-              onPress={onBackPress}
-              style={styles.back}
-            />
-          ) : null
-        }
         renderItem={({ item }) => (
           <View style={styles.cell}>
             <ActionCard
@@ -144,10 +157,9 @@ export default function Settings({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.surface },
-  grid: { padding: 10, gap: SPACING.md, paddingBottom: SPACING.md,paddingTop:0 },
+  grid: { padding: 10, gap: SPACING.md, paddingBottom: SPACING.md, paddingTop: 10 },
   row: { gap: SPACING.md },
   cell: { flex: 1, minWidth: 0 },
-  back: { alignSelf: "flex-start", minHeight: 20 },
 });
 
 // ====================existing for backup=====

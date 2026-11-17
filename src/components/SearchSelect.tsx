@@ -89,7 +89,8 @@ export default function SearchSelect({
   }
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
+      {/* <Text style={styles.label}>{label}</Text> */}
+      {Boolean(label?.trim()) && <Text style={styles.label}>{label}</Text>}
       <View
         ref={controlRef}
         collapsable={false}

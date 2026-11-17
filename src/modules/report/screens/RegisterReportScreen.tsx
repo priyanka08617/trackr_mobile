@@ -1016,7 +1016,8 @@ export default function RegisterReportScreen({
           {"extras" in report && report.extras && (
             <View style={styles.fieldCell}>
               <SelectField
-                label={report.extraLabel}
+                // label={report.extraLabel}
+                label=""
                 value={extra}
                 options={toOptions(report.extras)}
                 placeholder="All"
@@ -1340,8 +1341,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: COLORS.border,
   },
-  // tableHeader: { backgroundColor: COLORS.primary },
-  tableHeader: { backgroundColor: "#fff" },
+  tableHeader: { backgroundColor: COLORS.primary, color: "#fff" },
+
+  // tableHeader: { backgroundColor: "#fff" },
   tableCell: {
     width: 160,
     padding: SPACING.sm,
@@ -1352,7 +1354,7 @@ const styles = StyleSheet.create({
   },
   numberCell: { width: 64 },
   // headerText: { color: COLORS.white, fontWeight: FONT_WEIGHT.bold },
-  headerText: { color: COLORS.text, fontWeight: FONT_WEIGHT.bold },
+  headerText: { color: COLORS.white, fontWeight: FONT_WEIGHT.bold },
   alternateRow: { backgroundColor: COLORS.surface },
   paginationContainer: { gap: SPACING.sm },
   pagination: {
