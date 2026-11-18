@@ -157,6 +157,8 @@ export async function loadTrackerReportPage(
   trackerId: TrackerId,
   filters: TrackerFilters,
   offset: number,
+  limit = PAGE_SIZE,
+  signal?: AbortSignal,
 ): Promise<TrackerReportPage> {
   const baseUrl = await getTrackerBaseUrl();
   const token = await getAuthToken();
@@ -170,7 +172,7 @@ export async function loadTrackerReportPage(
   const params = new URLSearchParams({
     draw: String(Math.floor(offset / PAGE_SIZE) + 1),
     start: String(offset),
-    length: String(PAGE_SIZE),
+    length: String(limit),
     from: tableRange.from,
     to: tableRange.to,
     region: filters.region,
@@ -187,6 +189,7 @@ export async function loadTrackerReportPage(
   try {
     response = await fetch(url, {
       method: endpoint.method,
+      signal,
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${token}`,
@@ -198,7 +201,8 @@ export async function loadTrackerReportPage(
       },
       body: endpoint.method === "POST" ? params.toString() : undefined,
     });
-  } catch {
+  } catch (cause) {
+    if (signal?.aborted) throw cause;
     throw new Error("Could not reach this tracker report.");
   }
 
@@ -235,7 +239,7 @@ export async function loadTrackerReportPage(
   }
 
   const rows = value.data
-    .slice(0, PAGE_SIZE)
+    .slice(0, limit)
     .filter(
       (row): row is Record<string, unknown> =>
         typeof row === "object" && row !== null,
@@ -263,7 +267,7 @@ export async function loadTrackerReportPage(
     rows,
     total: Number.isFinite(total) ? total : rows.length,
     offset,
-    limit: PAGE_SIZE,
+    limit,
   };
 }
 

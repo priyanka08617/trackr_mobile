@@ -431,7 +431,15 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
         )}
         <View style={styles.table}>
           <DataTable
-            columns={OMNI_COLUMNS}
+            columns={
+              status === "pending"
+                ? OMNI_COLUMNS.filter(
+                    (column) =>
+                      column.title !== "Submitted By" &&
+                      column.title !== "Submitted On",
+                  )
+                : OMNI_COLUMNS
+            }
             rows={records.map((record) => ({ ...record, id: String(record.id) }))}
             empty={
               loading
@@ -454,8 +462,12 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
               value(record.delivery_remark),
               value(record.ho_final_remark),
               value(record.store_remark),
-              value(record.s1_name || record.submitted_by),
-              value(record.submitted_on),
+              ...(status === "pending"
+                ? []
+                : [
+                    value(record.s1_name || record.submitted_by),
+                    value(record.submitted_on),
+                  ]),
               <Text
                 style={[
                   styles.statusBadge,

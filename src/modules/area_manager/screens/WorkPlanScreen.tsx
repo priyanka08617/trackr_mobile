@@ -310,7 +310,7 @@ export default function WorkPlanScreen() {
                 }}
               />
             </View>
-          </View>
+        </View>
         )}
         {error && (
           <>
@@ -465,7 +465,7 @@ export default function WorkPlanScreen() {
               setLoading(true);
             }}
           />
-        </View>
+          </View>
       </View>
       <ChecklistDialog
         visible={confirm || Boolean(notice)}

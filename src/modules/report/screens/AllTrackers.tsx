@@ -45,6 +45,7 @@ import {
   type TrackerReportRow,
 } from "../services/AllTrackersService";
 import { isPickerCancellation } from "../services/trackerText";
+import { usePagination } from "../services/usePagination";
 
 const PAGE_SIZE = 50;
 
@@ -189,19 +190,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
     zone: "",
     store: "",
   });
-  const [apiColumns, setApiColumns] = useState<ReportColumn[]>([]);
-  const [rows, setRows] = useState<TrackerReportRow[]>([]);
-  const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
-  const [loading, setLoading] = useState(true);
   const pageSize = PAGE_SIZE;
-  const currentPage = Math.floor(offset / pageSize) + 1;
-  const totalPages = Math.ceil(total / pageSize);
-  const firstVisiblePage = currentPage;
-  const visiblePages = Array.from(
-    { length: Math.max(0, Math.min(5, totalPages - firstVisiblePage + 1)) },
-    (_, index) => firstVisiblePage + index,
-  );
 
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string>();
@@ -209,6 +198,51 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
   const [reloadKey, setReloadKey] = useState(0);
   const [pickerTarget, setPickerTarget] = useState<"from" | "to" | null>(null);
   const [draftPickerDate, setDraftPickerDate] = useState(new Date());
+  const queryKey = useMemo(
+    () => JSON.stringify([tracker.id, appliedFilters, reloadKey]),
+    [appliedFilters, reloadKey, tracker.id],
+  );
+  const fetchPage = useCallback(
+    async (requestedPage: number, limit: number, signal: AbortSignal) => {
+      const result = await loadTrackerReportPage(
+        tracker.id,
+        appliedFilters,
+        (requestedPage - 1) * limit,
+        limit,
+        signal,
+      );
+      return {
+        data: result.rows,
+        total: result.total,
+        metadata: result.columns,
+      };
+    },
+    [appliedFilters, tracker.id],
+  );
+  const {
+    data: rows,
+    total,
+    page: currentPage,
+    metadata,
+    loading,
+    error: pageError,
+    goToPage,
+  } = usePagination<TrackerReportRow>({
+    queryKey,
+    limit: pageSize,
+    fetchPage,
+  });
+  const apiColumns = Array.isArray(metadata)
+    ? (metadata as ReportColumn[])
+    : [];
+  const offset = (currentPage - 1) * pageSize;
+  const totalPages = Math.ceil(total / pageSize);
+  const firstVisiblePage = currentPage;
+  const visiblePages = Array.from(
+    { length: Math.max(0, Math.min(5, totalPages - firstVisiblePage + 1)) },
+    (_, index) => firstVisiblePage + index,
+  );
+  const visibleError = error ?? pageError;
 
   useEffect(() => {
     let active = true;
@@ -234,35 +268,6 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
     };
   }, [region, zone]);
 
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setRows([]);
-    setApiColumns([]);
-    setError(undefined);
-    loadTrackerReportPage(tracker.id, appliedFilters, offset)
-      .then((page) => {
-        if (!active) return;
-        setRows(page.rows);
-        setApiColumns(page.columns);
-        setTotal(page.total);
-      })
-      .catch((cause) => {
-        if (active)
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "Unable to load this tracker.",
-          );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [appliedFilters, offset, reloadKey, tracker.id]);
-
   const getFilters = useCallback((): TrackerFilters | undefined => {
     const from = parseDay(fromDate);
     const to = parseDay(toDate);
@@ -287,7 +292,6 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
     if (!filters) return;
     setError(undefined);
     setExportMessage(undefined);
-    setOffset(0);
     setAppliedFilters(filters);
   }, [getFilters]);
 
@@ -300,7 +304,6 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
     setStore("");
     setError(undefined);
     setExportMessage(undefined);
-    setOffset(0);
     setAppliedFilters({
       from: today,
       to: today,
@@ -533,9 +536,9 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
                 : `${rows.length} of ${total} report records`}
             </Text>
           </View>
-          {error ? (
+          {visibleError ? (
             <Text accessibilityRole="alert" style={styles.error}>
-              {error}
+              {visibleError}
             </Text>
           ) : null}
         </View>
@@ -545,7 +548,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
             selected start date are visible in the table.
           </Text>
         )}
-        {!loading && !error && rows.length > 0 && (
+        {!loading && !visibleError && rows.length > 0 && (
           <TrackerTable
             apiColumns={apiColumns}
             trackerId={tracker.id}
@@ -557,7 +560,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
           <View style={styles.empty}>
             {loading ? (
               <ActivityIndicator color={COLORS.primary} />
-            ) : error ? (
+            ) : visibleError ? (
               <AppButton
                 title="Try again"
                 onPress={() => setReloadKey((value) => value + 1)}
@@ -570,7 +573,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
             )}
           </View>
         )}
-        {!error && total > 0 && (
+        {!visibleError && total > 0 && (
           <View style={styles.paginationContainer}>
             <Text style={styles.pageLabel}>
               Page {currentPage} of {totalPages}
@@ -589,7 +592,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
                   },
                 ]}
                 disabled={loading || offset === 0}
-                onPress={() => setOffset(Math.max(0, offset - pageSize))}
+                onPress={() => void goToPage(currentPage - 1)}
               >
                 <View style={styles.previousIcon}>
                   <AreaIcon name="chevron" size={16} color={COLORS.primary} />
@@ -606,7 +609,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
                   textStyle={styles.pageButtonText}
                   onPress={() => {
                     if (page !== currentPage) {
-                      setOffset((page - 1) * pageSize);
+                      void goToPage(page);
                     }
                   }}
                 />
@@ -623,7 +626,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
                     disabled={loading}
                     style={styles.pageButton}
                     textStyle={styles.pageButtonText}
-                    onPress={() => setOffset((totalPages - 1) * pageSize)}
+                    onPress={() => void goToPage(totalPages)}
                   />
                 </>
               )}
@@ -645,7 +648,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
                   },
                 ]}
                 disabled={loading || offset + rows.length >= total}
-                onPress={() => setOffset(offset + pageSize)}
+                onPress={() => void goToPage(currentPage + 1)}
               >
                 <AreaIcon name="chevron" size={16} color={COLORS.primary} />
               </Pressable>

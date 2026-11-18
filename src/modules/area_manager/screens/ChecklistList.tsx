@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import {
   RefreshControl,
   ScrollView,
@@ -14,8 +14,8 @@ import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
 import { AppLoader } from "@/components/AppLoader";
 import {
-  AreaHeaderBackContext,
   AreaHeaderBackVisibleContext,
+  AreaHeaderActionContext,
   AreaHeaderTitleContext,
 } from "@/components/AreaHeaderBackContext";
 
@@ -27,8 +27,8 @@ import { useRmChecklistData } from "./DataContext";
 const PAGE_SIZE = 50;
 
 export default function ChecklistList() {
-  const headerBackHandlerRef = useContext(AreaHeaderBackContext);
   const setHeaderBackVisible = useContext(AreaHeaderBackVisibleContext);
+  const setHeaderAction = useContext(AreaHeaderActionContext);
   const setHeaderTitle = useContext(AreaHeaderTitleContext);
   const {
     records,
@@ -45,20 +45,13 @@ export default function ChecklistList() {
   const [notice, setNotice] = useState<ChecklistNotice>();
 
   useEffect(() => {
-    const goBack = () => {
-      if (router.canGoBack()) router.back();
-      else router.replace("/area_manager/settings");
-    };
-    if (headerBackHandlerRef) headerBackHandlerRef.current = goBack;
-    setHeaderBackVisible(true);
+    setHeaderBackVisible(false);
     setHeaderTitle("RM Checklist");
     return () => {
-      if (headerBackHandlerRef?.current === goBack)
-        headerBackHandlerRef.current = null;
       setHeaderBackVisible(false);
       setHeaderTitle(null);
     };
-  }, [headerBackHandlerRef, setHeaderBackVisible, setHeaderTitle]);
+  }, [setHeaderBackVisible, setHeaderTitle]);
 
   const filtered = records.filter((record) =>
     `${record.store} ${record.date} ${record.code} ${record.manager}`
@@ -109,6 +102,23 @@ export default function ChecklistList() {
     });
   }
 
+  const openAddForm = useCallback(() => {
+    router.push("/area_manager/rm_checklist_form");
+  }, []);
+
+  useEffect(() => {
+    setHeaderAction(
+      <AppButton
+        title="+ Add RM Checklist"
+        onPress={openAddForm}
+        disabled={busy}
+        style={styles.headerAddButton}
+        textStyle={styles.headerAddButtonText}
+      />,
+    );
+    return () => setHeaderAction(null);
+  }, [setHeaderAction, busy, openAddForm]);
+
   return (
     <SafeAreaView edges={["left", "right", "bottom"]} style={styles.screen}>
       <ScrollView
@@ -123,7 +133,6 @@ export default function ChecklistList() {
       >
         <View style={styles.controls}>
           {/* <Text style={styles.heading}>RM Checklist Records</Text> */}
-
           <AppInput
             placeholder="Search store, date or checklist code"
             accessibilityLabel="Search RM checklists"
@@ -353,6 +362,14 @@ const styles = StyleSheet.create({
   controls: {
     gap: SPACING.md,
   },
+  headerAddButton: {
+    minHeight: 38,
+    paddingHorizontal: SPACING.sm,
+    backgroundColor: COLORS.white,
+    borderColor: COLORS.white,
+    borderRadius: 8,
+  },
+  headerAddButtonText: { color: COLORS.primary, fontWeight: FONT_WEIGHT.bold },
 
   heading: {
     fontSize: FONT_SIZE.lg,
@@ -472,7 +489,7 @@ const styles = StyleSheet.create({
 
   viewButton: {
     backgroundColor: COLORS.primary,
-    minHeight: 44,
+    minHeight: 34,
     justifyContent: "center",
     paddingVertical: 7,
     paddingHorizontal: 10,
@@ -489,7 +506,7 @@ const styles = StyleSheet.create({
   removeButton: {
     borderWidth: 1,
     borderColor: COLORS.danger,
-    minHeight: 44,
+    minHeight: 34,
     justifyContent: "center",
     paddingVertical: 7,
     paddingHorizontal: 10,
@@ -537,5 +554,9 @@ const styles = StyleSheet.create({
 
   error: {
     color: COLORS.danger,
+  },
+
+   addButtonRow: {
+    alignItems: "flex-end",
   },
 });

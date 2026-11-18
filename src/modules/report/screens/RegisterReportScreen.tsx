@@ -3,12 +3,14 @@ import { AppInput } from "@/components/AppInput";
 import AreaIcon from "@/components/AreaIcon";
 import AreaPage from "@/components/AreaPage";
 import DateField from "@/components/DateField";
+import DynamicDataTable from "@/components/DynamicAutoDataTable";
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 import { DateTimePicker } from "@expo/ui/community/datetime-picker";
 import { Directory, File, Paths } from "expo-file-system";
-import { useEffect, useState } from "react";
+// import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Modal,
@@ -22,7 +24,7 @@ import {
 } from "react-native";
 import SelectField, {
   type SelectOption,
-} from "../../../components/SelectField";
+} from "@/components/SelectField";
 import { loadLocationFilterOptions } from "../services/locationFilters";
 import { prepareReportCsv } from "../services/reportCsv";
 import {
@@ -34,6 +36,7 @@ import {
   staticReportCells,
 } from "../services/reportTableColumns";
 import { isPickerCancellation } from "../services/trackerText";
+import { usePagination } from "../services/usePagination";
 
 const REPORTS = {
   alteration: {
@@ -259,6 +262,7 @@ async function fetchReportRows(
   filters: ReportFilters,
   offset = 0,
   limit = REPORT_PAGE_SIZE,
+  signal?: AbortSignal,
 ): Promise<{ rows: ReportRow[]; total: number }> {
   const baseUrl = await getRegisterBaseUrl();
   const token = await getRegisterToken();
@@ -281,6 +285,7 @@ async function fetchReportRows(
   const url = `${baseUrl}/${endpoint.path}`;
   const response = await fetch(url, {
     method: endpoint.method,
+    signal,
     headers: {
       Accept: "application/json",
       Authorization: `Bearer ${token}`,
@@ -309,6 +314,113 @@ async function fetchReportRows(
   return { rows, total: Number.isFinite(total) ? total : rows.length };
 }
 
+// function ReportTable({
+//   reportId,
+//   rows,
+//   offset,
+// }: {
+//   reportId: RegisterReportId;
+//   rows: ReportRow[];
+//   offset: number;
+// }) {
+//   const { height } = useWindowDimensions();
+//   const columns = REGISTER_TABLE_COLUMNS[reportId];
+//   const tableRows = rows.map((row) => ({
+//     ...row,
+//     cells: staticReportCells(row, columns),
+//   }));
+//   return (
+//     <View style={styles.tableContainer}>
+//       {/* <Text style={styles.tableHint}>
+//         Swipe left or right to view all columns
+//       </Text> */}
+//       <ScrollView horizontal showsHorizontalScrollIndicator nestedScrollEnabled>
+//         <ScrollView
+//           key={offset}
+//           style={{
+//             maxHeight: Math.max(180, Math.min(560, height * 0.6)),
+//             width: 64 + columns.length * 160,
+//           }}
+//           stickyHeaderIndices={[0]}
+//           nestedScrollEnabled
+//           showsVerticalScrollIndicator
+//         >
+//           <View>
+//             <View style={[styles.tableRow, styles.tableHeader]}>
+//               <Text
+//                 accessibilityRole="header"
+//                 style={[styles.tableCell, styles.numberCell, styles.headerText]}
+//               >
+//                 #
+//               </Text>
+//               {columns.map((column) => (
+//                 <Text
+//                   key={column.data}
+//                   accessibilityRole="header"
+//                   style={[styles.tableCell, styles.headerText]}
+//                 >
+//                   {column.title}
+//                 </Text>
+//               ))}
+//             </View>
+//           </View>
+//           {tableRows.map((row, index) => (
+//             <View
+//               key={`${row.id}-${index}`}
+//               style={[styles.tableRow, index % 2 === 1 && styles.alternateRow]}
+//             >
+//               <Text style={[styles.tableCell, styles.numberCell]}>
+//                 {offset + index + 1}
+//               </Text>
+//               {row.cells.map((value, columnIndex) => {
+//                 const field = columns[columnIndex].data;
+//                 const badge =
+//                   reportId === "footfall" &&
+//                   field === "alert_status" &&
+//                   value !== "-" &&
+//                   value !== "\u2014";
+//                 const status = value.trim().toLowerCase();
+//                 const colors =
+//                   status === "complete"
+//                     ? { backgroundColor: "#E4F3E8", color: "#186B32" }
+//                     : status === "partial" || status === "high footfall"
+//                       ? { backgroundColor: "#FFF0B3", color: "#805500" }
+//                       : status === "low footfall" || status === "not verified"
+//                         ? { backgroundColor: "#FCE5E5", color: "#A6212E" }
+//                         : { backgroundColor: "#EEEEEE", color: "#555555" };
+//                 return badge ? (
+//                   <View key={field} style={styles.tableCell}>
+//                     <View
+//                       style={[
+//                         styles.footfallBadge,
+//                         { backgroundColor: colors.backgroundColor },
+//                       ]}
+//                     >
+//                       <Text
+//                         accessibilityLabel={`${columns[columnIndex].title}: ${value}`}
+//                         style={[
+//                           styles.footfallBadgeText,
+//                           { color: colors.color },
+//                         ]}
+//                       >
+//                         {value}
+//                       </Text>
+//                     </View>
+//                   </View>
+//                 ) : (
+//                   <Text key={field} selectable style={styles.tableCell}>
+//                     {value}
+//                   </Text>
+//                 );
+//               })}
+//             </View>
+//           ))}
+//         </ScrollView>
+//       </ScrollView>
+//     </View>
+//   );
+// }
+
 function ReportTable({
   reportId,
   rows,
@@ -320,99 +432,42 @@ function ReportTable({
 }) {
   const { height } = useWindowDimensions();
   const columns = REGISTER_TABLE_COLUMNS[reportId];
-  const tableRows = rows.map((row) => ({
-    ...row,
-    cells: staticReportCells(row, columns),
-  }));
+
+  const tableColumns = useMemo(
+    () => [
+      { title: "#", dataIndex: "serial", width: 60, align: "center" as const },
+      ...columns.map((column) => ({
+        title: column.title,
+        dataIndex: column.data,
+        minWidth: 160,
+      })),
+    ],
+    [columns],
+  );
+
+  const tableData = useMemo(
+    () =>
+      rows.map((row, index) => {
+        const cells = staticReportCells(row, columns);
+        const data: Record<string, unknown> = {
+          id: row.id,
+          serial: offset + index + 1,
+        };
+        columns.forEach((column, columnIndex) => {
+          data[column.data] = cells[columnIndex] ?? "-";
+        });
+        return data;
+      }),
+    [rows, columns, offset],
+  );
+
   return (
-    <View style={styles.tableContainer}>
-      {/* <Text style={styles.tableHint}>
-        Swipe left or right to view all columns
-      </Text> */}
-      <ScrollView horizontal showsHorizontalScrollIndicator nestedScrollEnabled>
-        <ScrollView
-          key={offset}
-          style={{
-            maxHeight: Math.max(180, Math.min(560, height * 0.6)),
-            width: 64 + columns.length * 160,
-          }}
-          stickyHeaderIndices={[0]}
-          nestedScrollEnabled
-          showsVerticalScrollIndicator
-        >
-          <View>
-            <View style={[styles.tableRow, styles.tableHeader]}>
-              <Text
-                accessibilityRole="header"
-                style={[styles.tableCell, styles.numberCell, styles.headerText]}
-              >
-                #
-              </Text>
-              {columns.map((column) => (
-                <Text
-                  key={column.data}
-                  accessibilityRole="header"
-                  style={[styles.tableCell, styles.headerText]}
-                >
-                  {column.title}
-                </Text>
-              ))}
-            </View>
-          </View>
-          {tableRows.map((row, index) => (
-            <View
-              key={`${row.id}-${index}`}
-              style={[styles.tableRow, index % 2 === 1 && styles.alternateRow]}
-            >
-              <Text style={[styles.tableCell, styles.numberCell]}>
-                {offset + index + 1}
-              </Text>
-              {row.cells.map((value, columnIndex) => {
-                const field = columns[columnIndex].data;
-                const badge =
-                  reportId === "footfall" &&
-                  field === "alert_status" &&
-                  value !== "-" &&
-                  value !== "\u2014";
-                const status = value.trim().toLowerCase();
-                const colors =
-                  status === "complete"
-                    ? { backgroundColor: "#E4F3E8", color: "#186B32" }
-                    : status === "partial" || status === "high footfall"
-                      ? { backgroundColor: "#FFF0B3", color: "#805500" }
-                      : status === "low footfall" || status === "not verified"
-                        ? { backgroundColor: "#FCE5E5", color: "#A6212E" }
-                        : { backgroundColor: "#EEEEEE", color: "#555555" };
-                return badge ? (
-                  <View key={field} style={styles.tableCell}>
-                    <View
-                      style={[
-                        styles.footfallBadge,
-                        { backgroundColor: colors.backgroundColor },
-                      ]}
-                    >
-                      <Text
-                        accessibilityLabel={`${columns[columnIndex].title}: ${value}`}
-                        style={[
-                          styles.footfallBadgeText,
-                          { color: colors.color },
-                        ]}
-                      >
-                        {value}
-                      </Text>
-                    </View>
-                  </View>
-                ) : (
-                  <Text key={field} selectable style={styles.tableCell}>
-                    {value}
-                  </Text>
-                );
-              })}
-            </View>
-          ))}
-        </ScrollView>
-      </ScrollView>
-    </View>
+    <DynamicDataTable
+      columns={tableColumns}
+      data={tableData}
+      height={Math.max(240, Math.min(560, height * 0.6))}
+      refreshKey={`${reportId}-${offset}-${rows.length}`}
+    />
   );
 }
 
@@ -443,17 +498,7 @@ export default function RegisterReportScreen({
   const [extra, setExtra] = useState("");
   const [search, setSearch] = useState("");
   const [openSelect, setOpenSelect] = useState<string | null>(null);
-  const [rows, setRows] = useState<ReportRow[]>([]);
-  const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
   const pageSize = REPORT_PAGE_SIZE;
-  const currentPage = Math.floor(offset / pageSize) + 1;
-  const totalPages = Math.ceil(total / pageSize);
-  const firstVisiblePage = currentPage;
-  const visiblePages = Array.from(
-    { length: Math.max(0, Math.min(5, totalPages - firstVisiblePage + 1)) },
-    (_, index) => firstVisiblePage + index,
-  );
   const [appliedFilters, setAppliedFilters] = useState<ReportFilters>({
     fromDate: todayInputDate(),
     toDate: todayInputDate(),
@@ -463,11 +508,47 @@ export default function RegisterReportScreen({
     status: "",
     extra: "",
   });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [exportMessage, setExportMessage] = useState<string>();
   const [pickerTarget, setPickerTarget] = useState<"from" | "to" | null>(null);
   const [draftPickerDate, setDraftPickerDate] = useState(new Date());
+  const queryKey = useMemo(
+    () => JSON.stringify([reportId, appliedFilters]),
+    [appliedFilters, reportId],
+  );
+  const fetchPage = useCallback(
+    async (requestedPage: number, limit: number, signal: AbortSignal) => {
+      const result = await fetchReportRows(
+        reportId,
+        appliedFilters,
+        (requestedPage - 1) * limit,
+        limit,
+        signal,
+      );
+      return { data: result.rows, total: result.total };
+    },
+    [appliedFilters, reportId],
+  );
+  const {
+    data: rows,
+    total,
+    page: currentPage,
+    loading,
+    error: pageError,
+    goToPage,
+  } = usePagination<ReportRow>({
+    queryKey,
+    limit: pageSize,
+    fetchPage,
+  });
+  const offset = (currentPage - 1) * pageSize;
+  const totalPages = Math.ceil(total / pageSize);
+  const firstVisiblePage = currentPage;
+  const visiblePages = Array.from(
+    { length: Math.max(0, Math.min(5, totalPages - firstVisiblePage + 1)) },
+    (_, index) => firstVisiblePage + index,
+  );
+  const visibleError = error ?? pageError;
 
   useEffect(() => {
     let active = true;
@@ -493,48 +574,9 @@ export default function RegisterReportScreen({
     };
   }, [region, zone]);
 
-  useEffect(() => {
-    let active = true;
-    const today = todayInputDate();
-    setLoading(true);
-    fetchReportRows(reportId, {
-      fromDate: today,
-      toDate: today,
-      region,
-      zone,
-      store,
-      status: "",
-      extra: "",
-    })
-      .then((result) => {
-        if (active) {
-          setRows(result.rows);
-          setTotal(result.total);
-          setOffset(0);
-          setError(undefined);
-        }
-      })
-      .catch((cause: unknown) => {
-        if (active)
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "Unable to load report data.",
-          );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [reportId]);
-
-  async function loadReport(
+  function loadReport(
     filters: ReportFilters,
     searchText = "",
-    nextOffset = 0,
-    limit = pageSize,
   ) {
     const from = validDay(filters.fromDate);
     const to = validDay(filters.toDate);
@@ -554,27 +596,7 @@ export default function RegisterReportScreen({
     }
     setError(undefined);
     setExportMessage(undefined);
-    setLoading(true);
-    try {
-      const applied = { ...filters, search: searchText.trim() };
-      const result = await fetchReportRows(
-        reportId,
-        applied,
-        nextOffset,
-        limit,
-      );
-      setRows(result.rows);
-      setTotal(result.total);
-      setOffset(nextOffset);
-      setAppliedFilters(applied);
-    } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Unable to load report data.",
-      );
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
+    setAppliedFilters({ ...filters, search: searchText.trim() });
   }
 
   function filterReport() {
@@ -717,18 +739,16 @@ export default function RegisterReportScreen({
     setExtra("");
     setSearch("");
     setError(undefined);
-    void loadReport(
-      {
-        fromDate: today,
-        toDate: today,
-        region: "",
-        zone: "",
-        store: "",
-        status: "",
-        extra: "",
-      },
-      "",
-    );
+    setAppliedFilters({
+      fromDate: today,
+      toDate: today,
+      region: "",
+      zone: "",
+      store: "",
+      status: "",
+      extra: "",
+      search: "",
+    });
   }
 
   return (
@@ -1077,22 +1097,22 @@ export default function RegisterReportScreen({
         </Text>
       )}
 
-      {error && (
+      {visibleError && (
         <Text accessibilityRole="alert" style={styles.error}>
-          {error}
+          {visibleError}
         </Text>
       )}
-      {!error && rows.length === 0 && (
+      {!visibleError && rows.length === 0 && (
         <Text style={styles.empty}>
           {loading
             ? "Loading report data…"
             : "No report rows match these filters."}
         </Text>
       )}
-      {!loading && !error && rows.length > 0 && (
+      {!loading && !visibleError && rows.length > 0 && (
         <ReportTable reportId={reportId} rows={rows} offset={offset} />
       )}
-      {!error && total > 0 && (
+      {!visibleError && total > 0 && (
         <View style={styles.paginationContainer}>
           <Text style={styles.pageLabel}>
             Page {currentPage} of {totalPages}
@@ -1109,13 +1129,7 @@ export default function RegisterReportScreen({
                 { opacity: loading || offset === 0 ? 0.4 : pressed ? 0.7 : 1 },
               ]}
               disabled={loading || offset === 0}
-              onPress={() =>
-                void loadReport(
-                  appliedFilters,
-                  appliedFilters.search,
-                  Math.max(0, offset - pageSize),
-                )
-              }
+              onPress={() => void goToPage(currentPage - 1)}
             >
               <View style={styles.previousIcon}>
                 <AreaIcon name="chevron" size={16} color={COLORS.primary} />
@@ -1132,11 +1146,7 @@ export default function RegisterReportScreen({
                 textStyle={styles.pageButtonText}
                 onPress={() => {
                   if (page !== currentPage) {
-                    void loadReport(
-                      appliedFilters,
-                      appliedFilters.search,
-                      (page - 1) * pageSize,
-                    );
+                    void goToPage(page);
                   }
                 }}
               />
@@ -1153,13 +1163,7 @@ export default function RegisterReportScreen({
                   disabled={loading}
                   style={styles.pageButton}
                   textStyle={styles.pageButtonText}
-                  onPress={() =>
-                    void loadReport(
-                      appliedFilters,
-                      appliedFilters.search,
-                      (totalPages - 1) * pageSize,
-                    )
-                  }
+                  onPress={() => void goToPage(totalPages)}
                 />
               </>
             )}
@@ -1181,13 +1185,7 @@ export default function RegisterReportScreen({
                 },
               ]}
               disabled={loading || offset + rows.length >= total}
-              onPress={() =>
-                void loadReport(
-                  appliedFilters,
-                  appliedFilters.search,
-                  offset + pageSize,
-                )
-              }
+              onPress={() => void goToPage(currentPage + 1)}
             >
               <AreaIcon name="chevron" size={16} color={COLORS.primary} />
             </Pressable>

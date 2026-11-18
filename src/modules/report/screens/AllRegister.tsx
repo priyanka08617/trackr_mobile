@@ -11,8 +11,9 @@ import RegisterReportScreen, {
   type RegisterReportId,
 } from "./RegisterReportScreen";
 
+
 const REGISTER_ITEMS = [
-  { id: "alteration", title: "Alteration Report", icon: "setting" },
+  { id: "alteration", title: "Alteration Report", icon: "setting"},
   { id: "footfall", title: "Footfall Report", icon: "clock" },
   { id: "exchange", title: "Exchange Report", icon: "report" },
   { id: "electricity", title: "Electricity Report", icon: "dashboard" },
