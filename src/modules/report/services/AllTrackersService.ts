@@ -233,6 +233,8 @@ export async function loadTrackerReportPage(
     columns?: unknown;
     recordsFiltered?: number | string;
     recordsTotal?: number | string;
+    total?: number | string;
+    meta?: Record<string, unknown>;
   };
   if (!Array.isArray(value.data)) {
     throw new Error("The tracker report returned an unexpected response.");
@@ -248,9 +250,20 @@ export async function loadTrackerReportPage(
       ...row,
       id: String(row.id ?? row.ID ?? `tracker-${offset + index}`),
     }));
-  const total = Number(
-    value.recordsFiltered ?? value.recordsTotal ?? rows.length,
-  );
+  const totalValue =
+    value.recordsFiltered ??
+    value.recordsTotal ??
+    value.total ??
+    value.meta?.recordsFiltered ??
+    value.meta?.recordsTotal ??
+    value.meta?.total;
+  const parsedTotal = Number(totalValue);
+  const total =
+    totalValue === undefined || totalValue === null || totalValue === ""
+      ? rows.length
+      : Number.isFinite(parsedTotal)
+        ? Math.max(0, parsedTotal)
+        : rows.length;
 
   const columns: ReportColumn[] = Array.isArray(value.columns)
     ? value.columns.flatMap((column: unknown) => {
@@ -265,7 +278,7 @@ export async function loadTrackerReportPage(
   return {
     columns,
     rows,
-    total: Number.isFinite(total) ? total : rows.length,
+    total,
     offset,
     limit,
   };

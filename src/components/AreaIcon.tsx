@@ -14,6 +14,7 @@ const ICONS = {
   clock: { ios: "clock", fa: "clock" },
   check: { ios: "checkmark.circle", fa: "check-circle" },
   cancel: { ios: "xmark.circle", fa: "times-circle" },
+  view: { ios: "eye", fa: "eye" },
   calendar: { ios: "calendar", fa: "calendar-alt" },
   generator: { ios: "fuelpump.fill", fa: "gas-pump" },
   edit: { ios: "square.and.pencil", fa: "edit" },
@@ -46,10 +47,10 @@ const ICONS = {
   tag: { ios: "tag", fa: "tag" },
   cut: { ios: "scissors", fa: "cut" },
   shoePrints: { ios: "shoeprints.fill", fa: "shoe-prints" },
+  pdf: { ios: "doc.fill", fa: "file-pdf" },
 } satisfies Record<string, { ios: SymbolViewProps["name"]; fa: string }>;
 
 export type AreaIconName = keyof typeof ICONS;
-
 export default function AreaIcon({
   name,
   color = COLORS.primary,

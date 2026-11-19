@@ -13,9 +13,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
 import { AppLoader } from "@/components/AppLoader";
+import AreaIcon from "@/components/AreaIcon";
 import {
+  AreaHeaderBackContext,
   AreaHeaderBackVisibleContext,
-  AreaHeaderActionContext,
   AreaHeaderTitleContext,
 } from "@/components/AreaHeaderBackContext";
 
@@ -28,8 +29,8 @@ const PAGE_SIZE = 50;
 
 export default function ChecklistList() {
   const setHeaderBackVisible = useContext(AreaHeaderBackVisibleContext);
-  const setHeaderAction = useContext(AreaHeaderActionContext);
   const setHeaderTitle = useContext(AreaHeaderTitleContext);
+  const headerBackHandler = useContext(AreaHeaderBackContext);
   const {
     records,
     loading = false,
@@ -45,13 +46,18 @@ export default function ChecklistList() {
   const [notice, setNotice] = useState<ChecklistNotice>();
 
   useEffect(() => {
-    setHeaderBackVisible(false);
+    const goBack = () => {
+      router.replace("/area_manager/settings");
+    };
+    if (headerBackHandler) headerBackHandler.current = goBack;
+    setHeaderBackVisible(true);
     setHeaderTitle("RM Checklist");
     return () => {
       setHeaderBackVisible(false);
       setHeaderTitle(null);
+      if (headerBackHandler?.current === goBack) headerBackHandler.current = null;
     };
-  }, [setHeaderBackVisible, setHeaderTitle]);
+  }, [headerBackHandler, setHeaderBackVisible, setHeaderTitle]);
 
   const filtered = records.filter((record) =>
     `${record.store} ${record.date} ${record.code} ${record.manager}`
@@ -106,19 +112,6 @@ export default function ChecklistList() {
     router.push("/area_manager/rm_checklist_form");
   }, []);
 
-  useEffect(() => {
-    setHeaderAction(
-      <AppButton
-        title="+ Add RM Checklist"
-        onPress={openAddForm}
-        disabled={busy}
-        style={styles.headerAddButton}
-        textStyle={styles.headerAddButtonText}
-      />,
-    );
-    return () => setHeaderAction(null);
-  }, [setHeaderAction, busy, openAddForm]);
-
   return (
     <SafeAreaView edges={["left", "right", "bottom"]} style={styles.screen}>
       <ScrollView
@@ -133,15 +126,25 @@ export default function ChecklistList() {
       >
         <View style={styles.controls}>
           {/* <Text style={styles.heading}>RM Checklist Records</Text> */}
-          <AppInput
-            placeholder="Search store, date or checklist code"
-            accessibilityLabel="Search RM checklists"
-            value={search}
-            onChangeText={(value) => {
-              setSearch(value);
-              setPage(1);
-            }}
-          />
+          <View style={styles.searchRow}>
+            <AppInput
+              containerStyle={styles.searchInput}
+              placeholder="Search store, date or checklist code"
+              accessibilityLabel="Search RM checklists"
+              value={search}
+              onChangeText={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
+            />
+            <AppButton
+              title="+ Add RM"
+              onPress={openAddForm}
+              disabled={busy}
+              style={styles.addButton}
+              textStyle={styles.addButtonText}
+            />
+          </View>
 
           {/* <Text style={styles.recordCount}>
             Total Records: {filtered.length}
@@ -262,7 +265,7 @@ export default function ChecklistList() {
                         disabled={busy}
                         onPress={() => openDetails(item.code)}
                       >
-                        <Text style={styles.viewButtonText}>View</Text>
+                        <AreaIcon name="view" color={COLORS.primary} size={20} />
                       </TouchableOpacity>
 
                       {onDelete && (
@@ -273,7 +276,9 @@ export default function ChecklistList() {
                           disabled={busy}
                           onPress={() => setRemoveCode(item.code)}
                         >
-                          <Text style={styles.removeButtonText}>Remove</Text>
+                          <View style={styles.removeIconCircle}>
+                            <AreaIcon name="close" color={COLORS.black} size={14} />
+                          </View>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -362,15 +367,16 @@ const styles = StyleSheet.create({
   controls: {
     gap: SPACING.md,
   },
-  headerAddButton: {
-    minHeight: 38,
-    paddingHorizontal: SPACING.sm,
-    backgroundColor: COLORS.white,
-    borderColor: COLORS.white,
+  searchRow: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
+  searchInput: { flex: 3, minWidth: 0 },
+  addButton: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 44,
+    paddingHorizontal: SPACING.xs,
     borderRadius: 8,
   },
-  headerAddButtonText: { color: COLORS.primary, fontWeight: FONT_WEIGHT.bold },
-
+  addButtonText: { fontSize: FONT_SIZE.xs },
   heading: {
     fontSize: FONT_SIZE.lg,
     fontWeight: FONT_WEIGHT.bold,
@@ -403,8 +409,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
-    paddingVertical: 12,
-    minHeight: 75,
+    paddingVertical: 6,
+    minHeight: 60,
   },
 
   serialColumn: {
@@ -433,8 +439,8 @@ const styles = StyleSheet.create({
   },
 
   actionColumn: {
-    width: 180,
-    paddingHorizontal: 9,
+    width: 140,
+    paddingHorizontal: 4,
   },
   actionButtons: {
     flexDirection: "row",
@@ -488,36 +494,27 @@ const styles = StyleSheet.create({
   },
 
   viewButton: {
-    backgroundColor: COLORS.primary,
     minHeight: 34,
     justifyContent: "center",
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+    padding: 4,
     alignItems: "center",
-  },
-
-  viewButtonText: {
-    color: COLORS.white,
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.bold,
   },
 
   removeButton: {
-    borderWidth: 1,
-    borderColor: COLORS.danger,
-    minHeight: 34,
+    width: 60,
+    height: 60,
     justifyContent: "center",
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+    padding: 0,
     alignItems: "center",
   },
-
-  removeButtonText: {
-    color: COLORS.danger,
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.semibold,
+  removeIconCircle: {
+    width: 26,
+    height: 26,
+    borderWidth: 1,
+    borderColor: COLORS.black,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   footer: {

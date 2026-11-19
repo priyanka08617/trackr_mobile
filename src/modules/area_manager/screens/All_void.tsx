@@ -213,9 +213,12 @@ export default function VoidScreen() {
                 String(category),
                 (value) => setCategory(Number(value)),
               )}
-              <Text style={styles.label}>
-                {regions.length ? regions.join(", ") : "All available regions"}
-              </Text>
+              <View style={styles.regionHighlight}>
+                <Text style={styles.regionHighlightLabel}>REGION</Text>
+                <Text style={styles.regionHighlightValue}>
+                  {regions.length ? regions.join(", ") : "All available regions"}
+                </Text>
+              </View>
               <Text style={styles.value}>
                 {categoryModules.reduce((sum, item) => sum + item.pending, 0)}{" "}
                 pending ·{" "}
@@ -249,7 +252,7 @@ export default function VoidScreen() {
                     <View style={styles.countCircle}>
                       <Text style={styles.countText}>{item.pending}</Text>
                     </View>
-                    <Text style={styles.countLabel}>Total Pending</Text>
+                    <Text style={styles.countLabel}>Pending</Text>
                   </Pressable>
                   <Pressable
                     accessibilityRole="button"
@@ -264,7 +267,7 @@ export default function VoidScreen() {
                     <View style={styles.countCircle}>
                       <Text style={styles.countText}>{item.voided}</Text>
                     </View>
-                    <Text style={styles.countLabel}>Total Void</Text>
+                    <Text style={styles.countLabel}>Complete</Text>
                   </Pressable>
                 </View>
               </View>
@@ -813,6 +816,26 @@ const styles = StyleSheet.create({
   },
 
   moduleTop: { backgroundColor: COLORS.white, padding: SPACING.sm },
+  regionHighlight: {
+    backgroundColor: "#fff4e5",
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
+    borderRadius: 6,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    gap: 2,
+  },
+  regionHighlightLabel: {
+    color: COLORS.textLight,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  regionHighlightValue: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: "700",
+  },
   moduleCounts: {
     flexDirection: "row",
     justifyContent: "space-between",

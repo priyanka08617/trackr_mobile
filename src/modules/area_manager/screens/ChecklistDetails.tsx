@@ -2,20 +2,20 @@ import { AppButton } from "@/components/AppButton";
 import { AppLoader } from "@/components/AppLoader";
 import AreaPage from "@/components/AreaPage";
 import {
-    CARD,
-    COLORS,
-    FONT_SIZE,
-    FONT_WEIGHT,
-    SPACING,
+  CARD,
+  COLORS,
+  FONT_SIZE,
+  FONT_WEIGHT,
+  SPACING,
 } from "@/constants/theme";
 import { router, useLocalSearchParams } from "expo-router";
 import { useContext, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import SelectField from "../../../components/SelectField";
 import {
-    AreaHeaderBackContext,
-    AreaHeaderBackVisibleContext,
-    AreaHeaderTitleContext,
+  AreaHeaderBackContext,
+  AreaHeaderBackVisibleContext,
+  AreaHeaderTitleContext,
 } from "@/components/AreaHeaderBackContext";
 import { useRmChecklistData } from "./DataContext";
 
@@ -135,7 +135,7 @@ export default function ChecklistDetails() {
               </View>
             </View>
             <Text style={styles.text}>Store: {selected.store}</Text>
-            <Text style={styles.text}>RM Name: {selected.manager}</Text>
+            <Text style={styles.text}>RM Name: {selected.manager || "—"}</Text>
             <Text style={styles.text}>Date: {selected.date}</Text>
           </View>
           {!selected.detailsLoaded && onLoadDetails && !error ? (
@@ -167,33 +167,40 @@ export default function ChecklistDetails() {
                         #{selected.details.indexOf(detail) + 1} ·{" "}
                         {detail.question}
                       </Text>
+                      <Text
+                        style={[
+                          styles.mark,
+                          {
+                            color:
+                              detail.mark === 0
+                                ? COLORS.danger
+                                : COLORS.success,
+                          },
+                        ]}
+                      >
+                        Marks: {detail.mark}
+                      </Text>
                       <View style={styles.ratingRow}>
-                        <Text
-                          style={[
-                            styles.mark,
-                            {
-                              color:
-                                detail.mark === 0
-                                  ? COLORS.danger
-                                  : COLORS.success,
-                            },
-                          ]}
-                        >
-                          Marks: {detail.mark}
+                        <Text style={styles.ratingField}>
+                          <Text style={styles.fieldLabel}>Rating: </Text>
+                          {detail.rating}
                         </Text>
-                        <Text style={styles.text}>Rating: {detail.rating}</Text>
+                        <Text style={styles.ratingField}>
+                          <Text style={styles.fieldLabel}>Point Status: </Text>
+                          {detail.pointStatus || "—"}
+                        </Text>
                       </View>
-                      <Text style={styles.text}>
-                        Why: {detail.reason || "—"}
+                      <Text style={styles.fullRow}>
+                        <Text style={styles.fieldLabel}>Why: </Text>
+                        {detail.reason || "—"}
                       </Text>
-                      <Text style={styles.text}>
-                        RM Remark: {detail.remark || "—"}
+                      <Text style={styles.fullRow}>
+                        <Text style={styles.fieldLabel}>RM Remark: </Text>
+                        {detail.remark || "—"}
                       </Text>
-                      <Text style={styles.text}>
-                        Point Status: {detail.pointStatus || "—"}
-                      </Text>
-                      <Text style={styles.text}>
-                        Store Remark: {detail.storeRemark || "—"}
+                      <Text style={styles.fullRow}>
+                        <Text style={styles.fieldLabel}>Store Remark: </Text>
+                        {detail.storeRemark || "—"}
                       </Text>
                     </View>
                   ))}
@@ -252,7 +259,21 @@ const styles = StyleSheet.create({
     fontWeight: FONT_WEIGHT.semibold,
     lineHeight: 23,
   },
-  ratingRow: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.md },
+  ratingRow: { flexDirection: "row", gap: SPACING.md, width: "100%" },
+  ratingField: {
+    flex: 1,
+    minWidth: 0,
+    color: COLORS.text,
+    fontSize: FONT_SIZE.sm,
+    lineHeight: 22,
+  },
+  fullRow: {
+    width: "100%",
+    color: COLORS.text,
+    fontSize: FONT_SIZE.sm,
+    lineHeight: 22,
+  },
+  fieldLabel: { fontWeight: FONT_WEIGHT.semibold },
   mark: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold },
   pagination: {
     flexDirection: "row",

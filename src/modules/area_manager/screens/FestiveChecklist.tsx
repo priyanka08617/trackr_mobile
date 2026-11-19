@@ -730,9 +730,9 @@ export default function FestiveChecklist({
                 setPage(1);
               }}
             />
-            <Text style={styles.selectorMeta}>
+            {/* <Text style={styles.selectorMeta}>
               Swipe left or right to view all columns
-            </Text>
+            </Text> */}
             {loading && <AppLoader message="Loading festive checklists..." />}
           </View>
           <View style={styles.tableContainer}>

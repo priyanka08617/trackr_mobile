@@ -548,7 +548,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
             selected start date are visible in the table.
           </Text>
         )}
-        {!loading && !visibleError && rows.length > 0 && (
+        {!visibleError && rows.length > 0 && (
           <TrackerTable
             apiColumns={apiColumns}
             trackerId={tracker.id}

@@ -283,7 +283,7 @@ async function fetchReportRows(
     search: filters.search ?? "",
   });
   const url = `${baseUrl}/${endpoint.path}`;
-  const response = await fetch(url, {
+  const httpResponse = await fetch(url, {
     method: endpoint.method,
     signal,
     headers: {
@@ -293,9 +293,9 @@ async function fetchReportRows(
     },
     body: params.toString(),
   });
-  const data = await readRegisterJson(response, endpoint.path);
+  const data = await readRegisterJson(httpResponse, endpoint.path);
   if (
-    !response.ok ||
+    !httpResponse.ok ||
     (typeof data === "object" &&
       data !== null &&
       "success" in data &&
@@ -304,14 +304,32 @@ async function fetchReportRows(
     throw new Error(
       typeof data === "object" && data !== null && "message" in data
         ? String(data.message)
-        : `Report request failed (${response.status}).`,
+        : `Report request failed (${httpResponse.status}).`,
     );
   }
   const rows = rowsFromResponse(data, limit);
-  const total = Number(
-    (data as { recordsFiltered?: unknown }).recordsFiltered ?? rows.length,
-  );
-  return { rows, total: Number.isFinite(total) ? total : rows.length };
+  const response = data as Record<string, unknown>;
+  const meta =
+    typeof response.meta === "object" && response.meta !== null
+      ? (response.meta as Record<string, unknown>)
+      : {};
+  const totalValue =
+    response.recordsFiltered ??
+    response.recordsTotal ??
+    response.total ??
+    meta.recordsFiltered ??
+    meta.recordsTotal ??
+    meta.total;
+  const parsedTotal = Number(totalValue);
+  // Plain arrays and responses without a total are treated as a single page,
+  // using the actual returned row count.
+  const total =
+    totalValue === undefined || totalValue === null || totalValue === ""
+      ? rows.length
+      : Number.isFinite(parsedTotal)
+        ? Math.max(0, parsedTotal)
+        : rows.length;
+  return { rows, total };
 }
 
 // function ReportTable({
@@ -1102,14 +1120,12 @@ export default function RegisterReportScreen({
           {visibleError}
         </Text>
       )}
-      {!visibleError && rows.length === 0 && (
+      {!loading && !visibleError && rows.length === 0 && (
         <Text style={styles.empty}>
-          {loading
-            ? "Loading report data…"
-            : "No report rows match these filters."}
+          No report rows match these filters.
         </Text>
       )}
-      {!loading && !visibleError && rows.length > 0 && (
+      {!visibleError && rows.length > 0 && (
         <ReportTable reportId={reportId} rows={rows} offset={offset} />
       )}
       {!visibleError && total > 0 && (

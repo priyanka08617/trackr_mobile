@@ -11,7 +11,6 @@ import {
 
 import * as WebBrowser from "expo-web-browser";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 // Components
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";

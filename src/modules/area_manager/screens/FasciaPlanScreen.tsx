@@ -1,5 +1,6 @@
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
+import AreaIcon from "@/components/AreaIcon";
 import {
   AreaHeaderBackContext,
   AreaHeaderBackVisibleContext,
@@ -13,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -267,9 +269,9 @@ export default function FasciaPlanScreen() {
           <View style={styles.screen}>
             <View style={styles.detailHeader}>
               {banner}
-              <Text style={styles.infoLabel}>
+              {/* <Text style={styles.infoLabel}>
                 Swipe left or right to view all columns
-              </Text>
+              </Text> */}
             </View>
             <View style={styles.detailTable}>
               <FasciaTable
@@ -291,13 +293,16 @@ export default function FasciaPlanScreen() {
                   reportTableValue("date", item.end_date),
                   reportTableValue("created_on", item.row_created_on),
                   <StatusBadge key="status" status={item.status} />,
-                  <AppButton
+                  <Pressable
                     key="view"
-                    title="View"
                     accessibilityLabel={`View fascia plan for ${item.store_name}`}
+                    accessibilityRole="button"
                     onPress={() => void openPlan(item.id)}
                     disabled={loading || busy}
-                  />,
+                    style={styles.viewButton}
+                  >
+                    <AreaIcon name="view" color={COLORS.primary} size={20} />
+                  </Pressable>,
                 ]}
               />
             </View>
@@ -482,6 +487,13 @@ const styles = StyleSheet.create({
   infoLabel: { color: COLORS.textLight, fontSize: 12 },
   infoValue: { color: COLORS.text, fontSize: 14, lineHeight: 21 },
   planFooter: { padding: SPACING.lg, gap: SPACING.md },
+  viewButton: {
+    width: 40,
+    minHeight: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 6,
+  },
   detailHeader: { padding: SPACING.lg, gap: SPACING.md },
   detailTable: {
     flex: 1,
