@@ -46,6 +46,7 @@ const ICONS = {
   tag: { ios: "tag", fa: "tag" },
   cut: { ios: "scissors", fa: "cut" },
   shoePrints: { ios: "shoeprints.fill", fa: "shoe-prints" },
+  profile: { ios: "person.circle", fa: "user-circle" },
 } satisfies Record<string, { ios: SymbolViewProps["name"]; fa: string }>;
 
 export type AreaIconName = keyof typeof ICONS;

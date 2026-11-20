@@ -10,10 +10,8 @@ import { StyleSheet, View } from "react-native";
 import RegisterReportScreen, {
   type RegisterReportId,
 } from "./RegisterReportScreen";
-
-
 const REGISTER_ITEMS = [
-  { id: "alteration", title: "Alteration Report", icon: "setting"},
+  { id: "alteration", title: "Alteration Report", icon: "setting" },
   { id: "footfall", title: "Footfall Report", icon: "clock" },
   { id: "exchange", title: "Exchange Report", icon: "report" },
   { id: "electricity", title: "Electricity Report", icon: "dashboard" },
@@ -29,6 +27,10 @@ const REGISTER_ITEMS = [
 
 export default function AllRegister({ onBack }: { onBack?: () => void }) {
   const [selectedReport, setSelectedReport] = useState<RegisterReportId>();
+
+  // ======================================FOR TESTING=============================================================================
+
+  // ==============================================================================================================================
   const setHeaderTitle = useContext(AreaHeaderTitleContext);
   useEffect(() => {
     setHeaderTitle(
@@ -76,6 +78,19 @@ export default function AllRegister({ onBack }: { onBack?: () => void }) {
             />
           </View>
         ))}
+      </View>
+
+      <View
+        style={{
+          padding: 15,
+          marginBottom: 15,
+          backgroundColor: "#f1f5f9",
+          borderRadius: 8,
+        }}
+      >
+        {/* <Text selectable style={{ fontSize: 13, color: "#000" }}>
+          {apiDebug}
+        </Text> */}
       </View>
     </AreaPage>
   );
