@@ -176,7 +176,7 @@ export default function ImportantGuidelines({ onBack }: Props) {
         style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       >
         <View style={styles.iconContainer}>
-          <AreaIcon name="pdf" color={COLORS.danger} size={24} />
+          <AreaIcon name="report" color={COLORS.danger} size={24} />
         </View>
 
         <View style={styles.info}>
