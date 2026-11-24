@@ -1,3 +1,5 @@
+// import { getUserProfile } from "@/services/UserProfileService";
+import { getUserProfile } from "@/modules/common/services/profileService";
 import { Image } from "expo-image";
 import { Slot, router, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -26,7 +28,7 @@ import {
   FONT_WEIGHT,
   SPACING,
 } from "../constants/theme";
-import { clearAuthToken } from "../storage/authStorage";
+import { clearAuthToken, clearRefreshToken } from "../storage/authStorage";
 import { clearUser } from "../storage/userStorage";
 import { AppButton } from "./AppButton";
 import {
@@ -36,15 +38,6 @@ import {
   AreaHeaderTitleContext,
 } from "./AreaHeaderBackContext";
 import AreaIcon from "./AreaIcon";
-// Add completed modules here; different categories can use separate lists later.
-// export const AREA_NAVIGATION = [
-//   { title: "Home", href: "/common/home", icon: "home" },
-//   {
-//     title: "Escalation Matrix",
-//     href: "/common/escalation_matrix",
-//     icon: "report",
-//   },
-// ] as const;
 
 export const AREA_NAVIGATION = [
   { title: "Dashboard", href: "/area_manager/dashboard", icon: "dashboard" },
@@ -52,12 +45,8 @@ export const AREA_NAVIGATION = [
   { title: "Settings", href: "/area_manager/settings", icon: "setting" },
   { title: "Company FAQs", href: "/common/company_faq", icon: "faq" },
   { title: "Report", href: "/common/dump_report", icon: "report" },
+  { title: "Profile", href: "/common/profile", icon: "profile" },
 ] as const;
-
-// const PAGE_TITLES: Record<string, string> = {
-//   "/common/home": "Home",
-//   "/common/escalation_matrix": "Escalation Matrix",
-// };
 
 const PAGE_TITLES: Record<string, string> = {
   "/area_manager/dashboard": "Dashboard",
@@ -66,19 +55,6 @@ const PAGE_TITLES: Record<string, string> = {
   "/area_manager/settings": "Settings",
   "/common/company_faq": "Company FAQs",
   "/common/dump_report": "Reports",
-  // "/areamanger/all-portals": "All Portals Library",
-  // "/areamanger/report-bank": "Reports Bank",
-  // "/areamanger/festive-checklist": "Festive Checklist",
-  // "/areamanger/festive-report": "Festive Checklist",
-  // "/areamanger/work-plan-travel-plan": "Work Plan / Travel Plan",
-  // "/areamanger/rm-checklist": "RM Checklist",
-  // "/areamanger/rm-checklist-form": "RM Checklist Form",
-  // "/areamanger/rm-checklist-details": "RM Checklist Details",
-  // "/areamanger/monthly-lp-global-count": "Monthly LP Global Count",
-  // "/areamanger/fascia-report": "Fascia Plan Report",
-  // "/areamanger/fascia-plan": "Fascia Plan",
-  // "/areamanger/ho-checklist": "HO Checklist",
-  // "/areamanger/void-list": "All Void List",
 };
 
 export default function AreaLayout() {
@@ -87,6 +63,8 @@ export default function AreaLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [headerBackVisible, setHeaderBackVisible] = useState(false);
   const [headerAction, setHeaderAction] = useState<ReactNode>(null);
+  const [profileName, setProfileName] = useState("");
+  const [userCategoryName, setUserCategoryName] = useState("");
   const [headerOverride, setHeaderOverride] = useState<{
     pathname: string;
     title: string;
@@ -132,21 +110,45 @@ export default function AreaLayout() {
 
   async function logout() {
     if (loggingOut) return;
+
     setLoggingOut(true);
 
     try {
-      // Clear local Bearer token and user details.
-      // If your backend exposes a revoke-token endpoint, call it here first.
-      await Promise.all([clearAuthToken(), clearUser()]);
+      await Promise.all([clearAuthToken(), clearRefreshToken(), clearUser()]);
+
       setConfirmLogout(false);
       router.replace("/login");
-    } catch {
+    } catch (error) {
       Alert.alert("Logout failed", "Unable to clear local login details.");
     } finally {
       setLoggingOut(false);
     }
   }
 
+  // ===================Added by me 18-11-2026===========
+  useEffect(() => {
+    let active = true;
+
+    const loadUserCategory = async () => {
+      try {
+        const data = await getUserProfile();
+
+        if (active) {
+          setUserCategoryName(data.profile.user_category_name || "");
+          setProfileName(data.profile.name || data.profile.store_name || "");
+        }
+      } catch (error) {
+        console.error("Unable to load user category:", error);
+      }
+    };
+
+    loadUserCategory();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+  // ===================Added by me 18-11-2026===========
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
@@ -237,16 +239,25 @@ export default function AreaLayout() {
                     </View>
                   </View>
                   <View style={styles.dateTimeSection}>
-                    {/* <Text style={styles.userNameText}>{userName}</Text> */}
-                    <Text style={styles.userNameText}>User</Text>
+                    {/* <Text style={styles.userNameText}>User</Text> */}
                     <Text style={styles.clockText}>
                       {formatTime(currentTime)}
                     </Text>
                     <Text style={styles.dateText}>
                       {formatDate(currentTime)}
                     </Text>
+
+                    <View>
+                      <Text style={styles.userNameText}>
+                        {profileName || ""}
+                      </Text>
+
+                      <Text style={styles.userCategoryText}>
+                        {userCategoryName}
+                      </Text>
+                    </View>
                   </View>
-                  <Text style={styles.menuLabel}>NAVIGATION</Text>
+                  {/* <Text style={styles.menuLabel}>NAVIGATION</Text> */}
                   {AREA_NAVIGATION.map((item) => (
                     <Pressable
                       key={item.href}
@@ -347,11 +358,11 @@ const styles = StyleSheet.create({
   },
   // brand: { flex: 1 },
   brand: {
-  flex: 1,
-  flexDirection: "row",
-  alignItems: "center",
-  gap: SPACING.sm,
-},
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+  },
   headerTitle: {
     color: COLORS.white,
     fontSize: 22,
@@ -423,15 +434,15 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.md,
     fontWeight: FONT_WEIGHT.medium,
   },
-  menuLabel: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.semibold,
-    letterSpacing: 1.5,
-    paddingHorizontal: SPACING.lg,
-    marginTop: SPACING.sm,
-    marginBottom: SPACING.sm,
-  },
+  // menuLabel: {
+  //   color: "rgba(255,255,255,0.6)",
+  //   fontSize: FONT_SIZE.xs,
+  //   fontWeight: FONT_WEIGHT.semibold,
+  //   letterSpacing: 1.5,
+  //   paddingHorizontal: SPACING.lg,
+  //   marginTop: SPACING.sm,
+  //   marginBottom: SPACING.sm,
+  // },
   drawerHeading: {
     flexDirection: "row",
     alignItems: "center",
@@ -510,13 +521,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
     marginTop: 0,
   },
-  userNameText: {
-    color: COLORS.white,
-    fontSize: FONT_SIZE.lg,
-    fontWeight: FONT_WEIGHT.bold,
-    // textTransform: "uppercase",
-    marginBottom: SPACING.xs,
-  },
+
   clockText: {
     color: COLORS.white,
     fontSize: 24,
@@ -532,6 +537,22 @@ const styles = StyleSheet.create({
   foxLogo: {
     width: 48,
     height: 48,
-    marginLeft:-35
+    marginLeft: -35,
+  },
+
+  userCategoryText: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 3,
+    fontWeight: "600",
+  },
+
+  userNameText: {
+    color: COLORS.white,
+    fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.bold,
+    // textTransform: "uppercase",
+    marginTop: SPACING.lg,
+    // marginBottom: SPACING.xs,
   },
 });

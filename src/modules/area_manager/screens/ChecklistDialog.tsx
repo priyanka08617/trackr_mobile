@@ -1,11 +1,6 @@
-import { Modal, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AppButton } from "@/components/AppButton";
-import {
-  COLORS,
-  FONT_SIZE,
-  FONT_WEIGHT,
-  SPACING,
-} from "@/constants/theme";
+import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
+import { Modal, ScrollView, StyleSheet, Text, View } from "react-native";
 
 export interface ChecklistNotice {
   kind: "success" | "error";

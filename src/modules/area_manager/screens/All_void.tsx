@@ -1,6 +1,5 @@
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
-
 import {
   AreaHeaderBackContext,
   AreaHeaderBackVisibleContext,
@@ -8,10 +7,20 @@ import {
 } from "@/components/AreaHeaderBackContext";
 import DateField from "@/components/DateField";
 import SelectField from "@/components/SelectField";
+import DynamicAutoDataTable, {
+  type DynamicColumn,
+  type DynamicTableRow,
+} from "@/components/table/DynamicAutoDataTable";
 import { COLORS, SPACING } from "@/constants/theme";
 import { router } from "expo-router";
-import DynamicDataTable from "@/components/DynamicAutoDataTable";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -35,8 +44,11 @@ import {
 } from "../services/All_void_service";
 import ChecklistDialog from "./ChecklistDialog";
 
-const message = (error: unknown) =>
+const PAGE_SIZE = 20; // Matches existing All_void_service API pagination.
+
+const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Unable to load void records.";
+
 const display = (value: unknown) =>
   value === null ||
   value === undefined ||
@@ -44,9 +56,9 @@ const display = (value: unknown) =>
   String(value).startsWith("0000-00-00")
     ? "-"
     : trackerPlainText(value);
+
 export default function VoidScreen() {
   const [modules, setModules] = useState<VoidModule[]>([]);
-  const [regions, setRegions] = useState<string[]>([]);
   const [category, setCategory] = useState(1);
   const [filters, setFilters] = useState<VoidFilters>();
   const [records, setRecords] = useState<VoidRecord[]>([]);
@@ -65,28 +77,27 @@ export default function VoidScreen() {
   const backRef = useContext(AreaHeaderBackContext);
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
   const setTitle = useContext(AreaHeaderTitleContext);
+
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError(undefined);
     setSelected([]);
     setRecords([]);
+
     const task = filters
       ? loadVoidRecords(filters).then((result) => {
-          if (active) {
-            setRecords(result.records);
-            setTotal(result.total);
-          }
+          if (!active) return;
+          setRecords(result.records);
+          setTotal(result.total);
         })
       : loadVoidOptions().then((result) => {
-          if (active) {
-            setModules(result.modules);
-            setRegions(result.regions);
-          }
+          if (active) setModules(result.modules);
         });
+
     task
       .catch((cause) => {
-        if (active) setError(message(cause));
+        if (active) setError(errorMessage(cause));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -95,6 +106,7 @@ export default function VoidScreen() {
       active = false;
     };
   }, [filters, refresh]);
+
   const goBack = useCallback(() => {
     if (lock.current) return;
     if (filters) {
@@ -103,6 +115,7 @@ export default function VoidScreen() {
     } else if (router.canGoBack()) router.back();
     else router.replace("/area_manager/settings");
   }, [filters]);
+
   useEffect(() => {
     if (backRef) backRef.current = goBack;
     setBackVisible(true);
@@ -118,19 +131,21 @@ export default function VoidScreen() {
       setTitle(null);
     };
   }, [backRef, filters, goBack, modules, setBackVisible, setTitle]);
+
   function open(module: VoidModule, status: "pending" | "voided") {
     setSearch("");
     setFrom(today());
     setTo(today());
     setFilters({
       table: module.table,
-      status,
+      status, // Pending for Pending card; Voided for Void card.
       from: today(),
       to: today(),
       search: "",
       page: 1,
     });
   }
+
   async function approve() {
     if (!filters || !confirm?.length || lock.current) return;
     lock.current = true;
@@ -143,7 +158,7 @@ export default function VoidScreen() {
       setRefresh((value) => value + 1);
     } catch (cause) {
       setConfirm(undefined);
-      setError(message(cause));
+      setError(errorMessage(cause));
       setRecords([]);
       setSelected([]);
     } finally {
@@ -151,6 +166,7 @@ export default function VoidScreen() {
       setBusy(false);
     }
   }
+
   const banner = (
     <View style={styles.stack}>
       {error && (
@@ -169,27 +185,180 @@ export default function VoidScreen() {
       {loading && <ActivityIndicator color={COLORS.primary} />}
     </View>
   );
+
   const categoryModules = modules.filter(
-    (module) => module.category === category,
+    (module) => Number(module.category) === category,
   );
-  const tabs = (
-    values: { value: string; label: string }[],
-    current: string,
-    onChange: (value: string) => void,
-  ) => (
-    <View style={styles.row}>
-      {values.map((tab) => (
-        <AppButton
-          key={tab.value}
-          title={tab.label}
-          variant={tab.value === current ? "primary" : "outline"}
-          style={styles.column}
-          disabled={loading || busy}
-          onPress={() => onChange(tab.value)}
-        />
-      ))}
-    </View>
+
+  // Dynamic columns depend on the fields supplied by the current API page.
+  const dynamicFieldLabels = useMemo(
+    () => [
+      ...new Set(
+        records.flatMap((record) => record.fields.map((field) => field.label)),
+      ),
+    ],
+    [records],
   );
+
+  const tableData: DynamicTableRow[] = useMemo(
+    () =>
+      records.map((record) => ({
+        ...record,
+        __rowKey: record.id,
+      })),
+    [records],
+  );
+
+  const isPending = filters?.status === "pending";
+  const allSelected =
+    records.length > 0 &&
+    records.every((record) => selected.includes(record.id));
+
+  const columns = useMemo<DynamicColumn[]>(() => {
+    const cell = (value: unknown) => (
+      <Text style={styles.cellText}>{display(value)}</Text>
+    );
+    const paired = (first: unknown, second: unknown) => (
+      <View style={styles.pairedCell}>
+        <Text style={styles.cellText}>{display(first)}</Text>
+        <Text style={styles.subText}>{display(second)}</Text>
+      </View>
+    );
+
+    const result: DynamicColumn[] = [];
+
+    if (isPending) {
+      result.push({
+        title: "Select",
+        dataIndex: "__select",
+        width: 76,
+        fixed: "left",
+        searchable: false,
+        render: (row) => {
+          const item = row as unknown as VoidRecord;
+          return (
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityLabel={`Select void request for ${display(item.store_name)}`}
+              accessibilityState={{
+                checked: selected.includes(item.id),
+                disabled: busy || loading,
+              }}
+              disabled={busy || loading}
+              onPress={() =>
+                setSelected((current) =>
+                  current.includes(item.id)
+                    ? current.filter((id) => id !== item.id)
+                    : [...current, item.id],
+                )
+              }
+              style={styles.checkbox}
+            >
+              <Text style={styles.checkText}>
+                {selected.includes(item.id) ? "☑" : "☐"}
+              </Text>
+            </Pressable>
+          );
+        },
+      });
+    }
+
+    result.push(
+      {
+        title: "#",
+        dataIndex: "__serial",
+        // width: 65,
+        searchable: false,
+        render: (_row, index) =>
+          cell(((filters?.page ?? 1) - 1) * PAGE_SIZE + index + 1),
+      },
+      {
+        title: "Store",
+        dataIndex: "store_name",
+        // width: 170,
+        render: (row) => cell(row.store_name),
+      },
+      {
+        title: "Region / Zone",
+        dataIndex: "region",
+        // width: 170,
+        render: (row) => paired(row.region, row.zone),
+      },
+      {
+        title: "Requested By / On",
+        dataIndex: "requested_by",
+        // width: 175,
+        render: (row) => paired(row.requested_by, row.requested_on),
+      },
+      {
+        title: "Void Reason / Remark",
+        dataIndex: "reason",
+        // width: 230,
+        render: (row) => paired(row.reason, row.remark),
+      },
+    );
+
+    if (!isPending) {
+      result.push({
+        title: "Approved By / On",
+        dataIndex: "approved_by",
+        // width: 175,
+        render: (row) => paired(row.approved_by, row.approved_on),
+      });
+    }
+
+    for (const label of dynamicFieldLabels) {
+      result.push({
+        title: label,
+        dataIndex: `__field_${label}`,
+        // width: 160,
+        searchable: false,
+        render: (row) => {
+          const item = row as unknown as VoidRecord;
+          return cell(
+            item.fields.find((field) => field.label === label)?.value,
+          );
+        },
+      });
+    }
+
+    if (records.some((record) => record.product_count > 0)) {
+      result.push({
+        title: "Exchange Products",
+        dataIndex: "product_count",
+        // width: 150,
+        render: (row) => cell(row.product_count ?? 0),
+      });
+    }
+
+    result.push({
+      title: "Status",
+      dataIndex: "__status",
+      // width: 120,
+      searchable: false,
+      render: () => (
+        <Text
+          style={[
+            styles.statusText,
+            { color: isPending ? COLORS.danger : COLORS.success },
+          ]}
+        >
+          {isPending ? "Pending" : "Voided"}
+        </Text>
+      ),
+    });
+
+    return result;
+  }, [
+    busy,
+    dynamicFieldLabels,
+    filters?.page,
+    isPending,
+    loading,
+    records,
+    selected,
+  ]);
+
   return (
     <SafeAreaView edges={["left", "right", "bottom"]} style={styles.screen}>
       {!filters ? (
@@ -205,26 +374,55 @@ export default function VoidScreen() {
           }}
           ListHeaderComponent={
             <View style={styles.stack}>
-              {tabs(
-                [
-                  { value: "1", label: "All Register" },
-                  { value: "2", label: "All Tracker" },
-                ],
-                String(category),
-                (value) => setCategory(Number(value)),
-              )}
-              <View style={styles.regionHighlight}>
-                <Text style={styles.regionHighlightLabel}>REGION</Text>
-                <Text style={styles.regionHighlightValue}>
-                  {regions.length ? regions.join(", ") : "All available regions"}
-                </Text>
+              <View style={styles.navTabs}>
+                {[
+                  { id: 1, title: "All Register" },
+                  { id: 2, title: "All Tracker" },
+                ].map((tab) => (
+                  <Pressable
+                    key={tab.id}
+                    onPress={() => setCategory(tab.id)}
+                    style={[
+                      styles.navTab,
+                      category === tab.id && styles.activeNavTab,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.navTabText,
+                        category === tab.id && styles.activeNavTabText,
+                      ]}
+                    >
+                      {tab.title}
+                    </Text>
+                  </Pressable>
+                ))}
               </View>
-              <Text style={styles.value}>
-                {categoryModules.reduce((sum, item) => sum + item.pending, 0)}{" "}
-                pending ·{" "}
-                {categoryModules.reduce((sum, item) => sum + item.voided, 0)}{" "}
-                voided
-              </Text>
+
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryBox}>
+                  <Text style={styles.summaryLabel}>Total Pending</Text>
+                  <Text
+                    style={[styles.summaryNumber, { color: COLORS.danger }]}
+                  >
+                    {categoryModules.reduce(
+                      (sum, item) => sum + Number(item.pending || 0),
+                      0,
+                    )}
+                  </Text>
+                </View>
+                <View style={styles.summaryBox}>
+                  <Text style={styles.summaryLabel}>Total Void</Text>
+                  <Text
+                    style={[styles.summaryNumber, { color: COLORS.success }]}
+                  >
+                    {categoryModules.reduce(
+                      (sum, item) => sum + Number(item.voided || 0),
+                      0,
+                    )}
+                  </Text>
+                </View>
+              </View>
               {banner}
             </View>
           }
@@ -267,7 +465,7 @@ export default function VoidScreen() {
                     <View style={styles.countCircle}>
                       <Text style={styles.countText}>{item.voided}</Text>
                     </View>
-                    <Text style={styles.countLabel}>Complete</Text>
+                    <Text style={styles.countLabel}>Void</Text>
                   </Pressable>
                 </View>
               </View>
@@ -278,423 +476,172 @@ export default function VoidScreen() {
           )}
         />
       ) : (
-        <FlatList
-          key={filters.table}
-          data={records}
-          keyExtractor={(item) => item.id}
-          extraData={{ selected, busy }}
+        <ScrollView
+          style={styles.detailsScroll}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
-          refreshing={loading}
-          onRefresh={() => {
-            if (!busy) setRefresh((value) => value + 1);
-          }}
-          ListHeaderComponent={
-            <View style={styles.stack}>
-              <SelectField
-                label={category === 1 ? "Register" : "Tracker"}
-                value={filters.table}
-                options={categoryModules.map((module) => ({
-                  value: module.table,
-                  label: display(module.name),
-                }))}
-                disabled={loading || busy}
-                onChange={(table) =>
-                  setFilters((current) =>
-                    current ? { ...current, table, page: 1 } : current,
-                  )
-                }
-              />
-              {tabs(
-                [
-                  { value: "pending", label: "Pending" },
-                  { value: "voided", label: "Voided" },
-                ],
-                filters.status,
-                (status) =>
-                  setFilters((current) =>
-                    current
-                      ? {
-                          ...current,
-                          status: status as "pending" | "voided",
-                          page: 1,
-                        }
-                      : current,
-                  ),
-              )}
-              {filters.status === "voided" && (
-                <View style={styles.row}>
-                  <View style={styles.column}>
-                    <DateField
-                      maxDate={today()}
-                      compact
-                      label="From Date"
-                      value={from}
-                      onChange={(value) => {
-                        setFrom(value);
-                        if (validDate(value)) setTo(value);
-                      }}
-                      disabled={busy || loading}
-                    />
-                  </View>
-                  <View style={styles.column}>
-                    <DateField
-                      maxDate={today()}
-                      compact
-                      label="To Date"
-                      value={to}
-                      minDate={from}
-                      onChange={setTo}
-                      disabled={busy || loading}
-                    />
-                  </View>
-                </View>
-              )}
-              <AppInput
-                accessibilityLabel="Search void records"
-                placeholder="Search store, region or zone"
-                value={search}
-                maxLength={150}
-                editable={!busy}
-                onChangeText={setSearch}
-              />
-              <AppButton
-                title="Apply Filters"
-                disabled={loading || busy}
-                onPress={() =>
-                  setFilters((current) =>
-                    current
-                      ? { ...current, search: search.trim(), from, to, page: 1 }
-                      : current,
-                  )
-                }
-              />
-              {banner}
-              <Text style={styles.label}>{total} records</Text>
-
-              {records.length > 0 && (
-                <View style={styles.tableContainer}>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator
-                    nestedScrollEnabled
-                  >
-                    <View>
-                      <View style={[styles.tableRow, styles.tableHeader]}>
-                        {filters.status === "pending" && (
-                          <View style={styles.selectColumn}>
-                            <Pressable
-                              accessibilityRole="checkbox"
-                              accessibilityLabel={
-                                selected.length === records.length
-                                  ? "Deselect all records on this page"
-                                  : "Select all records on this page"
-                              }
-                              accessibilityState={{
-                                checked:
-                                  records.length > 0 &&
-                                  selected.length === records.length,
-                                disabled: busy || loading,
-                              }}
-                              disabled={busy || loading}
-                              style={styles.checkbox}
-                              onPress={() =>
-                                setSelected(
-                                  selected.length === records.length
-                                    ? []
-                                    : records.map((record) => record.id),
-                                )
-                              }
-                            >
-                              <Text style={styles.headerCheckbox}>
-                                {records.length > 0 &&
-                                selected.length === records.length
-                                  ? "☑"
-                                  : "☐"}
-                              </Text>
-                            </Pressable>
-                          </View>
-                        )}
-                        <Text style={[styles.headerText, styles.serialColumn]}>
-                          #
-                        </Text>
-                        <Text style={[styles.headerText, styles.storeColumn]}>
-                          Store
-                        </Text>
-                        <Text style={[styles.headerText, styles.regionColumn]}>
-                          Region / Zone
-                        </Text>
-                        <Text style={[styles.headerText, styles.requestColumn]}>
-                          Requested By / On
-                        </Text>
-                        <Text style={[styles.headerText, styles.reasonColumn]}>
-                          Void Reason / Remark
-                        </Text>
-                        {filters.status === "voided" && (
-                          <Text
-                            style={[styles.headerText, styles.requestColumn]}
-                          >
-                            Approved By / On
-                          </Text>
-                        )}
-                        {records
-                          .flatMap((record) => record.fields)
-                          .filter(
-                            (field, index, all) =>
-                              all.findIndex(
-                                (candidate) => candidate.label === field.label,
-                              ) === index,
-                          )
-                          .map((field) => (
-                            <Text
-                              key={field.label}
-                              style={[styles.headerText, styles.dynamicColumn]}
-                            >
-                              {field.label}
-                            </Text>
-                          ))}
-                        {records.some((record) => record.product_count > 0) && (
-                          <Text
-                            style={[styles.headerText, styles.requestColumn]}
-                          >
-                            Exchange Products
-                          </Text>
-                        )}
-                        <Text style={[styles.headerText, styles.actionColumn]}>
-                          Status
-                        </Text>
-                      </View>
-                      {records.map((item, index) => (
-                        <View
-                          key={item.id}
-                          style={[
-                            styles.tableRow,
-                            index % 2 === 1 && styles.alternateRow,
-                          ]}
-                        >
-                          {filters.status === "pending" && (
-                            <View style={styles.selectColumn}>
-                              <Pressable
-                                accessibilityRole="checkbox"
-                                accessibilityLabel={`Select void request for ${display(item.store_name)}`}
-                                accessibilityState={{
-                                  checked: selected.includes(item.id),
-                                  disabled: busy || loading,
-                                }}
-                                disabled={busy || loading}
-                                style={styles.checkbox}
-                                onPress={() =>
-                                  setSelected((current) =>
-                                    current.includes(item.id)
-                                      ? current.filter((id) => id !== item.id)
-                                      : [...current, item.id],
-                                  )
-                                }
-                              >
-                                <Text style={styles.CheckcellText}>
-                                  {selected.includes(item.id) ? "☑" : "☐"}
-                                </Text>
-                              </Pressable>
-                            </View>
-                          )}
-                          <Text style={[styles.cellText, styles.serialColumn]}>
-                            {(filters.page - 1) * 20 + index + 1}
-                          </Text>
-                          <Text style={[styles.cellText, styles.storeColumn]}>
-                            {display(item.store_name)}
-                          </Text>
-                          <Text style={[styles.cellText, styles.regionColumn]}>
-                            {display(item.region)} / {display(item.zone)}
-                          </Text>
-                          <View style={styles.requestColumn}>
-                            <Text style={styles.cellText}>
-                              {display(item.requested_by)}
-                            </Text>
-                            <Text style={styles.subText}>
-                              {display(item.requested_on)}
-                            </Text>
-                          </View>
-                          <View style={styles.reasonColumn}>
-                            <Text style={styles.cellText}>
-                              {display(item.reason)}
-                            </Text>
-                            <Text style={styles.subText}>
-                              {display(item.remark)}
-                            </Text>
-                          </View>
-                          {filters.status === "voided" && (
-                            <View style={styles.requestColumn}>
-                              <Text style={styles.cellText}>
-                                {display(item.approved_by)}
-                              </Text>
-                              <Text style={styles.subText}>
-                                {display(item.approved_on)}
-                              </Text>
-                            </View>
-                          )}
-                          {records
-                            .flatMap((record) => record.fields)
-                            .filter(
-                              (field, fieldIndex, all) =>
-                                all.findIndex(
-                                  (candidate) =>
-                                    candidate.label === field.label,
-                                ) === fieldIndex,
-                            )
-                            .map((field) => (
-                              <Text
-                                key={field.label}
-                                style={[styles.cellText, styles.dynamicColumn]}
-                              >
-                                {display(
-                                  item.fields.find(
-                                    (itemField) =>
-                                      itemField.label === field.label,
-                                  )?.value,
-                                )}
-                              </Text>
-                            ))}
-                          {records.some(
-                            (record) => record.product_count > 0,
-                          ) && (
-                            <Text
-                              style={[styles.cellText, styles.requestColumn]}
-                            >
-                              {item.product_count || 0}
-                            </Text>
-                          )}
-                          <View style={styles.actionColumn}>
-                            <Text
-                              style={[
-                                styles.statusText,
-                                {
-                                  color:
-                                    filters.status === "pending"
-                                      ? COLORS.danger
-                                      : COLORS.success,
-                                },
-                              ]}
-                            >
-                              {filters.status === "pending"
-                                ? "Pending"
-                                : "Voided"}
-                            </Text>
-                          </View>
-                        </View>
-                      ))}
-                    </View>
-                  </ScrollView>
-                </View>
-              )}
+        >
+          <View style={styles.stack}>
+            <View style={styles.row}>
+              <View style={styles.column}>
+                <SelectField
+                  label={category === 1 ? "Register" : "Tracker"}
+                  value={filters.table}
+                  options={categoryModules.map((module) => ({
+                    value: module.table,
+                    label: display(module.name),
+                  }))}
+                  disabled={loading || busy}
+                  onChange={(table) =>
+                    setFilters((current) =>
+                      current
+                        ? { ...current, table, status: "pending", page: 1 }
+                        : current,
+                    )
+                  }
+                />
+              </View>
+              <View style={styles.column}>
+                <SelectField
+                  label="Status"
+                  value={filters.status}
+                  options={[
+                    { value: "pending", label: "Pending" },
+                    { value: "voided", label: "Voided" },
+                  ]}
+                  disabled={loading || busy}
+                  onChange={(status) =>
+                    setFilters((current) =>
+                      current
+                        ? {
+                            ...current,
+                            status: status as "pending" | "voided",
+                            page: 1,
+                          }
+                        : current,
+                    )
+                  }
+                />
+              </View>
             </View>
-          }
-          ListEmptyComponent={
-            !loading && !error ? (
-              <Text style={styles.label}>
-                No{" "}
-                {filters.status === "pending"
-                  ? "pending void requests"
-                  : "voided records"}{" "}
-                found.
-              </Text>
-            ) : null
-          }
-          renderItem={() => null}
-          ListFooterComponent={
-            total > 0 && !error ? (
-              <View style={styles.paginationContainer}>
-                <Text style={styles.pageLabel}>
-                  Page {filters.page} of {Math.max(1, Math.ceil(total / 20))} |{" "}
-                  {(filters.page - 1) * 20 + 1}-
-                  {Math.min(filters.page * 20, total)} of {total}
-                </Text>
-                <View style={styles.pagination}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Previous page"
-                    accessibilityState={{
-                      disabled: loading || busy || filters.page <= 1,
+
+            {filters.status === "voided" && (
+              <View style={styles.row}>
+                <View style={styles.column}>
+                  <DateField
+                    maxDate={today()}
+                    compact
+                    label="From Date"
+                    value={from}
+                    onChange={(value) => {
+                      setFrom(value);
+                      if (validDate(value)) setTo(value);
                     }}
-                    style={({ pressed }) => [
-                      styles.pageButton,
-                      (loading || busy || filters.page <= 1) &&
-                        styles.pageButtonDisabled,
-                      pressed && styles.pageButtonPressed,
-                    ]}
-                    disabled={loading || busy || filters.page <= 1}
-                    onPress={() =>
-                      setFilters((current) =>
-                        current
-                          ? { ...current, page: current.page - 1 }
-                          : current,
-                      )
-                    }
-                  >
-                    <Text style={styles.pageButtonText}>‹</Text>
-                  </Pressable>
-                  {Array.from(
-                    { length: Math.max(1, Math.ceil(total / 20)) },
-                    (_, index) => index + 1,
-                  ).map((page) => (
-                    <Pressable
-                      key={page}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Page ${page}${filters.page === page ? ", current page" : ""}`}
-                      accessibilityState={{
-                        selected: filters.page === page,
-                        disabled: loading || busy,
-                      }}
-                      style={({ pressed }) => [
-                        styles.pageButton,
-                        filters.page === page && styles.pageButtonCurrent,
-                        pressed && styles.pageButtonPressed,
-                      ]}
-                      disabled={loading || busy || filters.page === page}
-                      onPress={() =>
-                        setFilters((current) =>
-                          current ? { ...current, page } : current,
-                        )
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.pageButtonText,
-                          filters.page === page && styles.pageButtonCurrentText,
-                        ]}
-                      >
-                        {page}
-                      </Text>
-                    </Pressable>
-                  ))}
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Next page"
-                    accessibilityState={{
-                      disabled: loading || busy || filters.page * 20 >= total,
-                    }}
-                    style={({ pressed }) => [
-                      styles.pageButton,
-                      (loading || busy || filters.page * 20 >= total) &&
-                        styles.pageButtonDisabled,
-                      pressed && styles.pageButtonPressed,
-                    ]}
-                    disabled={loading || busy || filters.page * 20 >= total}
-                    onPress={() =>
-                      setFilters((current) =>
-                        current
-                          ? { ...current, page: current.page + 1 }
-                          : current,
-                      )
-                    }
-                  >
-                    <Text style={styles.pageButtonText}>›</Text>
-                  </Pressable>
+                    disabled={busy || loading}
+                  />
+                </View>
+                <View style={styles.column}>
+                  <DateField
+                    maxDate={today()}
+                    compact
+                    label="To Date"
+                    value={to}
+                    minDate={from}
+                    onChange={setTo}
+                    disabled={busy || loading}
+                  />
                 </View>
               </View>
-            ) : null
-          }
-        />
+            )}
+
+            <View style={styles.row}>
+              <View style={styles.column}>
+                <AppInput
+                  accessibilityLabel="Search void records"
+                  placeholder="Search store, region or zone"
+                  value={search}
+                  maxLength={150}
+                  editable={!busy}
+                  onChangeText={setSearch}
+                  style={{ height: 40 }}
+                />
+              </View>
+              <View style={styles.column}>
+                <AppButton
+                  title="Apply Filters"
+                  disabled={loading || busy}
+                  onPress={() =>
+                    setFilters((current) =>
+                      current
+                        ? {
+                            ...current,
+                            search: search.trim(),
+                            from,
+                            to,
+                            page: 1,
+                          }
+                        : current,
+                    )
+                  }
+                />
+              </View>
+            </View>
+            <View style={styles.hr} />
+            {banner}
+            {/* <Text style={styles.label}>{total} records</Text> */}
+
+            {isPending && records.length > 0 && (
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityLabel="Select all records on this page"
+                accessibilityState={{
+                  checked: allSelected,
+                  disabled: busy || loading,
+                }}
+                disabled={busy || loading}
+                style={styles.selectAll}
+                onPress={() =>
+                  setSelected(
+                    allSelected ? [] : records.map((record) => record.id),
+                  )
+                }
+              >
+                <Text style={styles.checkText}>{allSelected ? "☑" : "☐"}</Text>
+                <Text style={styles.selectAllText}>
+                  Select all on this page
+                </Text>
+              </Pressable>
+            )}
+
+            <DynamicAutoDataTable
+              columns={columns}
+              data={tableData}
+              height={420}
+              refreshKey={`${filters.table}:${filters.status}:${filters.page}:${refresh}`}
+              loading={loading}
+              showSearch={false} // API search above searches all matching records.
+              showColumnFilter={false}
+              showPagination
+              serverSidePagination
+              currentPage={filters.page}
+              totalRecords={total}
+              pageSize={PAGE_SIZE}
+              onPageChange={(page) => {
+                if (loading || busy) return;
+                setFilters((current) =>
+                  current ? { ...current, page } : current,
+                );
+              }}
+              emptyMessage={
+                loading
+                  ? "Loading records..."
+                  : "No matching void records found."
+              }
+            />
+          </View>
+        </ScrollView>
       )}
+
       {filters?.status === "pending" && selected.length > 0 && (
         <View style={styles.footer}>
           <AppButton
@@ -704,11 +651,12 @@ export default function VoidScreen() {
           />
         </View>
       )}
+
       <ChecklistDialog
         visible={Boolean(confirm)}
-        title="Approve void requests?"
-        message={`Approve ${confirm?.length ?? 0} selected request(s)? The selected records will be marked void.`}
-        destructive
+        title="Do you want to Approve these void request(s)?"
+        message={` Once approved, the selected records will be marked as voided.`}
+        // destructive
         busy={busy}
         confirmText="Yes, Approve Void"
         onConfirm={() => void approve()}
@@ -724,118 +672,48 @@ export default function VoidScreen() {
     </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.surface },
-  content: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: SPACING.xxl },
+  detailsScroll: { flex: 1 },
+  content: {
+    paddingHorizontal: 7,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.xxl,
+    gap: SPACING.sm,
+    flexGrow: 1,
+  },
   stack: { gap: SPACING.md },
-  tableContainer: {
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    overflow: "hidden",
-    backgroundColor: COLORS.white,
-  },
-  tableRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    minHeight: 58,
-    alignItems: "center",
-    backgroundColor: COLORS.white,
-  },
-  tableHeader: { backgroundColor: COLORS.primary, minHeight: 48 },
-  alternateRow: { backgroundColor: COLORS.surface },
-  serialColumn: { width: 56, paddingHorizontal: SPACING.sm },
-  selectColumn: {
-    width: 72,
-    paddingHorizontal: SPACING.sm,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  storeColumn: { width: 170, padding: SPACING.sm },
-  regionColumn: { width: 150, padding: SPACING.sm },
-  requestColumn: {
-    width: 160,
-    padding: SPACING.sm,
-  },
-  reasonColumn: {
-    width: 210,
-    padding: SPACING.sm,
-  },
-  actionColumn: {
-    width: 190,
-    padding: SPACING.sm,
-    gap: 4,
-  },
-  headerText: {
-    color: COLORS.white,
-    fontSize: 13,
-    fontWeight: "700",
-    paddingVertical: SPACING.sm,
-    borderRightWidth: 1,
-    borderRightColor: COLORS.border,
-  },
-  headerCheckbox: { color: COLORS.white, fontSize: 20, fontWeight: "700" },
-  cellText: { color: COLORS.text, fontSize: 14 },
-  CheckcellText: { color: COLORS.text, fontSize: 20 },
-  subText: { color: COLORS.textLight, fontSize: 11, marginTop: 3 },
-  statusText: { fontWeight: "700", fontSize: 13 },
-  dynamicColumn: { width: 160, padding: SPACING.sm },
   row: { flexDirection: "row", gap: SPACING.sm },
   column: { flex: 1, minWidth: 0 },
+  label: { color: COLORS.textLight, fontSize: 12 },
+  error: { color: COLORS.danger },
+  cellText: { color: COLORS.text, fontSize: 12 },
+  pairedCell: { paddingVertical: 0 },
+  subText: { color: COLORS.textLight, fontSize: 11, marginTop: 3 },
+  statusText: { fontWeight: "700", fontSize: 12 },
+  checkbox: { alignItems: "center", justifyContent: "center" },
+  checkText: { color: COLORS.text, fontSize: 21 },
+  selectAll: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+  },
+  selectAllText: { color: COLORS.text, fontSize: 12 },
   moduleRow: { gap: SPACING.md },
-  // moduleCard: {
-  //   flex: 1,
-  //   borderRadius: 10,
-  //   overflow: "hidden",
-  //   backgroundColor: "#fdf7f7",
-  //   elevation: 2,
-  //   shadowColor: "#000",
-  //   shadowOffset: { width: 0, height: 1 },
-  //   shadowOpacity: 0.12,
-  //   shadowRadius: 2,
-  // },
-
   moduleCard: {
     flex: 1,
     borderRadius: 10,
     overflow: "hidden",
     backgroundColor: "#fdf7f7",
-
     ...Platform.select({
-      web: {
-        boxShadow: "0px 1px 2px rgba(0,0,0,0.12)",
-      },
-      ios: {
-        boxShadow: "0px 1px 2px rgba(0,0,0,0.12)",
-      },
-      android: {
-        elevation: 2,
-      },
+      web: { boxShadow: "0px 1px 2px rgba(0,0,0,0.12)" },
+      ios: { boxShadow: "0px 1px 2px rgba(0,0,0,0.12)" },
+      android: { elevation: 2 },
     }),
   },
-
-  moduleTop: { backgroundColor: COLORS.white, padding: SPACING.sm },
-  regionHighlight: {
-    backgroundColor: "#fff4e5",
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.primary,
-    borderRadius: 6,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    gap: 2,
-  },
-  regionHighlightLabel: {
-    color: COLORS.textLight,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-  regionHighlightValue: {
-    color: COLORS.primary,
-    fontSize: 14,
-    fontWeight: "700",
-  },
+  moduleTop: { backgroundColor: COLORS.white },
   moduleCounts: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -866,7 +744,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   moduleBottom: {
-    minHeight: 56,
+    minHeight: 40,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: SPACING.md,
@@ -878,49 +756,46 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
   },
-  title: { color: COLORS.text, fontSize: 16, fontWeight: "600" },
-  label: { color: COLORS.textLight, fontSize: 12 },
-  value: { color: COLORS.text, fontSize: 14, lineHeight: 21 },
-  heading: { flexDirection: "row", alignItems: "flex-start", gap: SPACING.sm },
-  badge: {
-    color: COLORS.white,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    fontSize: 12,
-  },
-  info: { gap: 4 },
-  checkbox: { minHeight: 44, justifyContent: "center" },
-  error: { color: COLORS.danger },
-  paginationContainer: { gap: SPACING.sm, paddingVertical: SPACING.sm },
-  pageLabel: { color: COLORS.textLight, fontSize: 12, textAlign: "center" },
-  pagination: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: SPACING.xs,
-  },
-  pageButton: {
-    minWidth: 38,
-    height: 40,
-    paddingHorizontal: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderRadius: 6,
-    backgroundColor: COLORS.white,
-  },
-  pageButtonCurrent: { backgroundColor: COLORS.primary },
-  pageButtonDisabled: { opacity: 0.4 },
-  pageButtonPressed: { opacity: 0.7 },
-  pageButtonText: { color: COLORS.primary, fontSize: 14, fontWeight: "600" },
-  pageButtonCurrentText: { color: COLORS.white },
   footer: {
     padding: SPACING.md,
     backgroundColor: COLORS.white,
     borderTopWidth: 1,
     borderColor: COLORS.border,
+  },
+  navTabs: {
+    flexDirection: "row",
+    width: "100%",
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  navTab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  activeNavTab: { borderBottomWidth: 3, borderBottomColor: COLORS.primary },
+  navTabText: { color: COLORS.textLight, fontSize: 16, fontWeight: "500" },
+  activeNavTabText: { color: COLORS.primary, fontWeight: "700" },
+  summaryRow: { flexDirection: "row", gap: 8, width: "100%" },
+  summaryBox: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  summaryLabel: { fontSize: 12, color: COLORS.textLight, fontWeight: "600" },
+  summaryNumber: { fontSize: 22, fontWeight: "700" },
+  hr: {
+    height: 2,
+    backgroundColor: COLORS.border,
+    width: "100%",
+    // marginVertical: 1,
   },
 });

@@ -1,11 +1,11 @@
-import { tableDateRange } from "./reportDateRange";
+import type { AreaIconName } from "@/components/AreaIcon";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
-import { loadLocationFilterOptions } from "./locationFilters";
-import type { ReportColumn } from "./reportTableColumns";
 import { readApiJson } from "../../common/services/DashboardService";
+import { loadLocationFilterOptions } from "./locationFilters";
+import { tableDateRange } from "./reportDateRange";
+import type { ReportColumn } from "./reportTableColumns";
 import { normalizeTrackerText } from "./trackerText";
-import type { AreaIconName } from "@/components/AreaIcon";
 
 const PAGE_SIZE = 50;
 

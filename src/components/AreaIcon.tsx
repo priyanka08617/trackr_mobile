@@ -14,7 +14,6 @@ const ICONS = {
   clock: { ios: "clock", fa: "clock" },
   check: { ios: "checkmark.circle", fa: "check-circle" },
   cancel: { ios: "xmark.circle", fa: "times-circle" },
-  view: { ios: "eye", fa: "eye" },
   calendar: { ios: "calendar", fa: "calendar-alt" },
   generator: { ios: "fuelpump.fill", fa: "gas-pump" },
   edit: { ios: "square.and.pencil", fa: "edit" },
@@ -47,10 +46,24 @@ const ICONS = {
   tag: { ios: "tag", fa: "tag" },
   cut: { ios: "scissors", fa: "cut" },
   shoePrints: { ios: "shoeprints.fill", fa: "shoe-prints" },
-  pdf: { ios: "doc.fill", fa: "file-pdf" },
+  profile: { ios: "person.circle", fa: "user-circle" },
+  deleteDraft: { ios: "trash.fill", fa: "trash-alt" },
+  walking: { ios: "figure.walk", fa: "walking" },
+  exchange: { ios: "arrow.left.arrow.right", fa: "exchange-alt" },
+  gasPump: { ios: "fuelpump.fill", fa: "gas-pump" },
+  bolt: { ios: "bolt.fill", fa: "bolt" },
+  key: { ios: "key.fill", fa: "key" },
+  userCheck: { ios: "person.crop.circle.badge.checkmark", fa: "user-check" },
+  userFriends: { ios: "person.2.fill", fa: "user-friends" },
+  recycle: { ios: "arrow.3.trianglepath", fa: "recycle" },
+  receipt: { ios: "receipt.fill", fa: "receipt" },
+  locationPin: { ios: "mappin.and.ellipse", fa: "map-marker-alt" },
+  search: { ios: "magnifyingglass", fa: "search" },
+  calculator: { ios: "plus.forwardslash.minus", fa: "calculator" },
 } satisfies Record<string, { ios: SymbolViewProps["name"]; fa: string }>;
 
 export type AreaIconName = keyof typeof ICONS;
+
 export default function AreaIcon({
   name,
   color = COLORS.primary,

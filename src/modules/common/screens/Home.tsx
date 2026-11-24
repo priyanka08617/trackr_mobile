@@ -66,13 +66,13 @@ const HOME_CARDS = [
   },
 
   {
-    title: "Library of Important Guidelines",
+    title: "Important Guidelines",
     image: require("../../../../assets/images/icons/dashboard/library_of_guideline.png"),
     screen: "library_of_important_guidelines",
   },
 
   {
-    title: "Pending Omni Return Tracker",
+    title: "Omni Return Tracker",
     image: require("../../../../assets/images/icons/dashboard/online_return_trackr.png"),
     screen: "pending_omni_return_tracker",
   },

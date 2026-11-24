@@ -1,22 +1,32 @@
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
-import AreaIcon from "@/components/AreaIcon";
 import {
   AreaHeaderBackContext,
   AreaHeaderBackVisibleContext,
   AreaHeaderTitleContext,
 } from "@/components/AreaHeaderBackContext";
+import DynamicDataTable, {
+  type DynamicColumn,
+  type DynamicTableRow,
+} from "@/components/table/DynamicAutoDataTable";
 import { COLORS, SPACING } from "@/constants/theme";
 import { router } from "expo-router";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -27,7 +37,9 @@ import {
   type FasciaInput,
   type FasciaPlan,
 } from "../services/FasciaService";
-import FasciaTable, { type FasciaColumn } from "./FasciaTable";
+
+const PAGE_SIZE = 20;
+
 function displayTimestamp(value: string | null | undefined) {
   if (!value || value.startsWith("0000-00-00")) return "-";
   const match = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(value);
@@ -78,32 +90,17 @@ const labels: Record<keyof FasciaInput, string> = {
   floor: "Floor",
   fascia_plan: "Fascia Plan",
 };
-const planColumns: FasciaColumn[] = [
-  { title: "#", width: 56 },
-  { title: "Store", width: 220 },
-  { title: "Start Date", width: 110 },
-  { title: "End Date", width: 110 },
-  { title: "Created On", width: 170 },
-  { title: "Status", width: 120 },
-  { title: "Action", width: 100 },
-];
 const detailFields = Object.keys(labels) as (keyof FasciaInput)[];
-const detailColumns: FasciaColumn[] = [
-  { title: "#", width: 56 },
-  ...detailFields.map((key) => ({ title: labels[key], width: 140 })),
-  { title: "Actual Fascia", width: 190 },
-  { title: "Status", width: 120 },
-  { title: "Submitted By", width: 180 },
-  { title: "Submitted On", width: 190 },
-];
 const numberPattern = /^[0-9]+(?:\.[0-9]+)?$/;
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Unable to process fascia plan.";
 
 export default function FasciaPlanScreen() {
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const [records, setRecords] = useState<FasciaPlan[]>([]);
   const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [tableAreaHeight, setTableAreaHeight] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -123,19 +120,23 @@ export default function FasciaPlanScreen() {
   const requestVersion = useRef(0);
   const mutationLock = useRef(false);
 
-  const loadList = useCallback(async (nextOffset = 0) => {
+  const loadList = useCallback(async (nextPage = 1) => {
     const version = ++requestVersion.current;
+    const nextOffset = (nextPage - 1) * PAGE_SIZE;
     setLoading(true);
     setError("");
     try {
       const result = await fasciaRequest<{
         records: FasciaPlan[];
         total: number;
-      }>("view", undefined, { limit: "20", offset: String(nextOffset) });
+      }>("view", undefined, {
+        limit: String(PAGE_SIZE),
+        offset: String(nextOffset),
+      });
       if (version !== requestVersion.current) return;
       setRecords(result.records);
       setTotal(Number(result.total));
-      setOffset(nextOffset);
+      setCurrentPage(nextPage);
     } catch (cause) {
       if (version === requestVersion.current) setError(message(cause));
     } finally {
@@ -156,7 +157,7 @@ export default function FasciaPlanScreen() {
     setDetails([]);
     setActual({});
     setError("");
-    void loadList();
+    void loadList(1);
   }, [loadList]);
   const goBack = useCallback(() => {
     if (busy || loading) return;
@@ -183,28 +184,228 @@ export default function FasciaPlanScreen() {
     };
   }, [backRef, goBack, setBackVisible]);
 
-  async function openPlan(id: string) {
-    if (loading || busy) return;
-    const version = ++requestVersion.current;
-    setLoading(true);
-    setError("");
-    setNotice("");
-    try {
-      const result = await fasciaRequest<{
-        plan: FasciaPlan;
-        details: FasciaDetail[];
-      }>("view", undefined, { id });
-      if (version !== requestVersion.current) return;
-      setPlan(result.plan);
-      setDetails(result.details);
-      setActual({});
-      setMode("view");
-    } catch (cause) {
-      if (version === requestVersion.current) setError(message(cause));
-    } finally {
-      if (version === requestVersion.current) setLoading(false);
-    }
-  }
+  const openPlan = useCallback(
+    async (id: string) => {
+      if (loading || busy) return;
+      const version = ++requestVersion.current;
+      setLoading(true);
+      setError("");
+      setNotice("");
+      try {
+        const result = await fasciaRequest<{
+          plan: FasciaPlan;
+          details: FasciaDetail[];
+        }>("view", undefined, { id });
+        if (version !== requestVersion.current) return;
+        setPlan(result.plan);
+        setDetails(result.details);
+        setActual({});
+        setMode("view");
+      } catch (cause) {
+        if (version === requestVersion.current) setError(message(cause));
+      } finally {
+        if (version === requestVersion.current) setLoading(false);
+      }
+    },
+    [busy, loading],
+  );
+
+  const listColumns = useMemo<DynamicColumn[]>(
+    () => [
+      { title: "#", dataIndex: "serial", minWidth: 30, align: "center" },
+      {
+        title: "Store",
+        dataIndex: "store_name",
+        minWidth: 48,
+        render: (record) => (
+          <Text
+            style={[
+              styles.tableText,
+              // { maxWidth: Math.max(96, Math.min(200, windowWidth * 0.45)) },
+            ]}
+          >
+            {String(record.store_name ?? "-")}
+          </Text>
+        ),
+      },
+      ...[
+        ["Start Date", "start_date"],
+        ["End Date", "end_date"],
+        ["Created On", "created_on"],
+      ].map(([title, dataIndex]) => ({
+        title,
+        dataIndex,
+        minWidth: 52,
+        render: (record: DynamicTableRow) => (
+          <Text
+            style={[
+              styles.tableText,
+              { maxWidth: Math.max(64, Math.min(112, windowWidth * 0.28)) },
+            ]}
+          >
+            {String(record[dataIndex] ?? "-")}
+          </Text>
+        ),
+      })),
+      {
+        title: "Status",
+        dataIndex: "status",
+        minWidth: 42,
+        align: "center",
+        render: (record) => (
+          <StatusBadge status={String(record.status ?? "")} />
+        ),
+      },
+      {
+        title: "Action",
+        dataIndex: "action",
+        minWidth: 40,
+        align: "center",
+        searchable: false,
+        render: (record) => (
+          <AppButton
+            title="View"
+            style={styles.compactButton}
+            textStyle={styles.compactButtonText}
+            accessibilityLabel={`View fascia plan for ${String(record.store_name ?? "")}`}
+            onPress={() => void openPlan(String(record.id))}
+            disabled={loading || busy}
+          />
+        ),
+      },
+    ],
+    [busy, loading, openPlan, windowWidth],
+  );
+  const detailColumns = useMemo<DynamicColumn[]>(
+    () => [
+      { title: "#", dataIndex: "serial", minWidth: 30, align: "center" },
+      ...detailFields.map((key) => ({
+        title: labels[key],
+        dataIndex: key,
+        minWidth: 40,
+        render: (record: DynamicTableRow) => (
+          <Text
+            style={[
+              styles.tableText,
+              { maxWidth: Math.max(72, Math.min(160, windowWidth * 0.4)) },
+            ]}
+          >
+            {String(record[key] ?? "-")}
+          </Text>
+        ),
+      })),
+      {
+        title: "Actual Fascia",
+        dataIndex: "actual_fascia",
+        minWidth: 52,
+        render: (record, index) => {
+          const id = String(record.id ?? "");
+          const status = String(record.status ?? "");
+          if (status !== "1" || String(plan?.status) !== "1") {
+            return (
+              <Text style={styles.tableText}>
+                {String(record.actual_fascia ?? "-")}
+              </Text>
+            );
+          }
+          return (
+            <AppInput
+              accessibilityLabel={`Actual Fascia row ${index + 1}`}
+              placeholder="Actual"
+              keyboardType="decimal-pad"
+              value={actual[id] ?? String(record.actual_fascia ?? "")}
+              maxLength={300}
+              editable={!busy}
+              style={styles.compactInput}
+              onChangeText={(value) =>
+                setActual((current) => ({
+                  ...current,
+                  [id]: value.replace(/[^0-9.]/g, ""),
+                }))
+              }
+            />
+          );
+        },
+      },
+      {
+        title: "Status",
+        dataIndex: "status",
+        minWidth: 42,
+        align: "center",
+        render: (record) => (
+          <StatusBadge status={String(record.status ?? "")} detail />
+        ),
+      },
+      {
+        title: "Submitted By",
+        dataIndex: "submitted_by",
+        minWidth: 50,
+        render: (record) => (
+          <Text
+            style={[
+              styles.tableText,
+              { maxWidth: Math.max(72, Math.min(160, windowWidth * 0.4)) },
+            ]}
+          >
+            {String(record.submitted_by ?? "-")}
+          </Text>
+        ),
+      },
+      {
+        title: "Submitted On",
+        dataIndex: "submitted_on",
+        minWidth: 55,
+        render: (record) => (
+          <Text
+            style={[
+              styles.tableText,
+              { maxWidth: Math.max(72, Math.min(120, windowWidth * 0.3)) },
+            ]}
+          >
+            {String(record.submitted_on ?? "-")}
+          </Text>
+        ),
+      },
+    ],
+    [actual, busy, plan?.status, windowWidth],
+  );
+  const listTableData = useMemo<DynamicTableRow[]>(
+    () =>
+      records.map((item, index) => ({
+        __rowKey: item.id,
+        id: item.id,
+        serial: (currentPage - 1) * PAGE_SIZE + index + 1,
+        store_name: item.store_name || "-",
+        start_date: reportTableValue("date", item.start_date),
+        end_date: reportTableValue("date", item.end_date),
+        created_on: reportTableValue("created_on", item.row_created_on),
+        status: item.status,
+      })),
+    [currentPage, records],
+  );
+  const detailTableData = useMemo<DynamicTableRow[]>(
+    () =>
+      details.map((item, index) => {
+        const row: DynamicTableRow = {
+          __rowKey: item.id,
+          id: item.id,
+          serial: index + 1,
+          actual_fascia: item.actual_fascia ?? "-",
+          status: item.status,
+          submitted_by: item.submitted_name || item.submited_by || "-",
+          submitted_on: displayTimestamp(item.submited_on),
+        };
+        for (const key of detailFields) {
+          const value = item[key];
+          row[key] =
+            value === null || value === undefined || value === ""
+              ? "-"
+              : String(value);
+        }
+        return row;
+      }),
+    [details],
+  );
   async function submit() {
     if (!plan || mutationLock.current) return;
     const rows = details
@@ -255,7 +456,6 @@ export default function FasciaPlanScreen() {
         </Text>
       ) : null}
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
-      {loading || busy ? <ActivityIndicator color={COLORS.primary} /> : null}
     </>
   );
 
@@ -267,70 +467,47 @@ export default function FasciaPlanScreen() {
       >
         {mode === "list" ? (
           <View style={styles.screen}>
-            <View style={styles.detailHeader}>
-              {banner}
-              {/* <Text style={styles.infoLabel}>
-                Swipe left or right to view all columns
-              </Text> */}
-            </View>
-            <View style={styles.detailTable}>
-              <FasciaTable
-                key={offset}
-                columns={planColumns}
-                rows={records}
-                extraData={{ loading, busy }}
-                refreshing={loading}
+            <View style={styles.detailHeader}>{banner}</View>
+            <View
+              style={styles.detailTable}
+              onLayout={(event) =>
+                setTableAreaHeight(event.nativeEvent.layout.height)
+              }
+            >
+              <DynamicDataTable
+                columns={listColumns}
+                data={listTableData}
+                height={Math.max(
+                  120,
+                  (tableAreaHeight || windowHeight - 200) - 62,
+                )}
+                refreshKey={`plans-${currentPage}`}
+                compact
+                showPagination
+                serverSidePagination
+                currentPage={currentPage}
+                pageSize={PAGE_SIZE}
+                totalRecords={total}
+                loading={loading}
                 onRefresh={() => {
-                  if (!loading && !busy) void loadList(offset);
+                  if (!loading && !busy) void loadList(currentPage);
                 }}
-                empty={
-                  loading ? "Loading fascia plans..." : "No fascia plans found."
-                }
-                renderCells={(item, index) => [
-                  String(offset + index + 1),
-                  item.store_name,
-                  reportTableValue("date", item.start_date),
-                  reportTableValue("date", item.end_date),
-                  reportTableValue("created_on", item.row_created_on),
-                  <StatusBadge key="status" status={item.status} />,
-                  <Pressable
-                    key="view"
-                    accessibilityLabel={`View fascia plan for ${item.store_name}`}
-                    accessibilityRole="button"
-                    onPress={() => void openPlan(item.id)}
-                    disabled={loading || busy}
-                    style={styles.viewButton}
-                  >
-                    <AreaIcon name="view" color={COLORS.primary} size={20} />
-                  </Pressable>,
-                ]}
+                onPageChange={(nextPage) => {
+                  if (!loading && !busy && nextPage !== currentPage) {
+                    void loadList(nextPage);
+                  }
+                }}
+                emptyMessage="No fascia plans found."
               />
-            </View>
-            <View style={styles.planFooter}>
-              <Text style={styles.notice}>
-                Showing {total === 0 ? 0 : offset + 1} to{" "}
-                {Math.min(offset + records.length, total)} of {total} plans
-              </Text>
-              <View style={styles.actions}>
-                <AppButton
-                  title="Previous"
-                  variant="outline"
-                  disabled={loading || offset === 0}
-                  onPress={() => void loadList(Math.max(0, offset - 20))}
-                />
-                <AppButton
-                  title="Next"
-                  variant="outline"
-                  disabled={loading || offset + records.length >= total}
-                  onPress={() => void loadList(offset + 20)}
-                />
-              </View>
             </View>
           </View>
         ) : (
           <View style={styles.screen}>
             <View style={styles.detailHeader}>
               {banner}
+              {loading || busy ? (
+                <ActivityIndicator color={COLORS.primary} />
+              ) : null}
               <View style={styles.card}>
                 <View style={styles.cardHeading}>
                   <Text style={styles.storeName}>{plan?.store_name}</Text>
@@ -350,43 +527,23 @@ export default function FasciaPlanScreen() {
                   {details.length} rows | {pending.length} pending
                 </Text>
               </View>
-              <Text style={styles.infoLabel}>
-                Swipe left or right to view all columns
-              </Text>
             </View>
-            <View style={styles.detailTable}>
-              <FasciaTable
+            <View
+              style={styles.detailTable}
+              onLayout={(event) =>
+                setTableAreaHeight(event.nativeEvent.layout.height)
+              }
+            >
+              <DynamicDataTable
                 columns={detailColumns}
-                rows={details}
-                extraData={{ actual, busy, plan }}
-                empty="No detail rows found."
-                renderCells={(item, index) => [
-                  String(index + 1),
-                  ...detailFields.map((key) => item[key] || "-"),
-                  String(item.status) === "1" &&
-                  String(plan?.status) === "1" ? (
-                    <AppInput
-                      key="actual"
-                      accessibilityLabel={`Actual Fascia row ${index + 1}`}
-                      placeholder="Enter Actual Fascia"
-                      keyboardType="decimal-pad"
-                      value={actual[item.id] ?? item.actual_fascia ?? ""}
-                      maxLength={300}
-                      editable={!busy}
-                      onChangeText={(value) =>
-                        setActual((current) => ({
-                          ...current,
-                          [item.id]: value.replace(/[^0-9.]/g, ""),
-                        }))
-                      }
-                    />
-                  ) : (
-                    (item.actual_fascia ?? "-")
-                  ),
-                  <StatusBadge key="status" status={item.status} />,
-                  item.submitted_name || item.submited_by || "-",
-                  displayTimestamp(item.submited_on),
-                ]}
+                data={detailTableData}
+                height={Math.max(
+                  120,
+                  (tableAreaHeight || windowHeight - 320) - 8,
+                )}
+                compact
+                loading={loading}
+                emptyMessage="No detail rows found."
               />
             </View>
             {pending.length > 0 && String(plan?.status) === "1" ? (
@@ -449,7 +606,6 @@ export default function FasciaPlanScreen() {
 }
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.surface },
-  content: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 40 },
   card: {
     backgroundColor: COLORS.white,
     borderRadius: 12,
@@ -458,15 +614,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  title: { color: COLORS.text, fontSize: 18, fontWeight: "600" },
   error: { color: COLORS.danger },
   notice: { color: COLORS.textLight },
-  actions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: SPACING.sm,
-  },
-  header: { gap: SPACING.md },
   cardHeading: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -483,47 +632,70 @@ const styles = StyleSheet.create({
   },
   fieldGrid: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm },
   field: { flexGrow: 1, flexBasis: "46%", gap: 4, minWidth: 120 },
-  stackedField: { gap: 4 },
   infoLabel: { color: COLORS.textLight, fontSize: 12 },
   infoValue: { color: COLORS.text, fontSize: 14, lineHeight: 21 },
-  planFooter: { padding: SPACING.lg, gap: SPACING.md },
-  viewButton: {
-    width: 40,
-    minHeight: 34,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 6,
+  detailHeader: {
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+    gap: 4,
   },
-  detailHeader: { padding: SPACING.lg, gap: SPACING.md },
   detailTable: {
     flex: 1,
-    marginHorizontal: SPACING.lg,
-    marginBottom: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
+    minHeight: 0,
+    width: "100%",
     overflow: "hidden",
   },
   badge: {
     alignSelf: "flex-start",
     color: COLORS.white,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     fontSize: 12,
     fontWeight: "600",
   },
+  tableText: {
+    // color: COLORS.text,
+    // fontSize: 12,
+    // lineHeight: 13,
+    // flexShrink: 1,
+
+    color: COLORS.text,
+    fontSize: 12,
+    lineHeight: 17,
+    flexShrink: 1,
+    flexWrap: "wrap",
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  compactButton: {
+    minHeight: 24,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  compactButtonText: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  compactInput: {
+    minHeight: 24,
+    paddingHorizontal: 3,
+    paddingVertical: 2,
+    fontSize: 11,
+  },
   submitBar: {
     backgroundColor: "#faf0f1",
-    padding: SPACING.md,
-    gap: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 6,
+    gap: 4,
     borderTopWidth: 1,
     borderColor: COLORS.border,
   },
   submitButton: { backgroundColor: "#CD5D67", borderColor: "#CD5D67" },
   summary: {
     color: COLORS.text,
-    fontSize: 12,
+    fontSize: 11,
     textAlign: "center",
     fontWeight: "600",
   },
