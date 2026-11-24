@@ -144,7 +144,7 @@ export async function loadRmRecords(): Promise<RmChecklist[]> {
           code: String(row.rm_checklist_code),
           date: displayDate(row.checklist_date),
           store: String(row.store_name ?? ""),
-          manager: String(row.rm_name ?? ""),
+          manager: String(row.rm_name ?? row.rm_code ?? "").trim(),
           createdOn: String(row.row_created_on ?? ""),
           status: Number(row.status) === 2 ? 2 : 1,
           details: [],

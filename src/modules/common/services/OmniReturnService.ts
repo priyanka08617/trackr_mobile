@@ -19,6 +19,7 @@ export interface OmniReturnRecord {
   delivery_remark: string;
   ho_final_remark: string;
   store_remark: string;
+  s1_name?: string;
   submitted_by: string;
   submitted_on: string;
   status: number;
@@ -34,7 +35,12 @@ export interface OmniReturnPage {
 interface OmniReturnResponse {
   success?: boolean;
   message?: string;
-  records?: OmniReturnRecord[];
+  records?: Array<
+    Omit<OmniReturnRecord, "submitted_by"> & {
+      submitted_by?: string | null;
+      s1_name?: string | null;
+    }
+  >;
   total?: number | string | null;
   limit?: number | string | null;
   offset?: number | string | null;
@@ -78,6 +84,7 @@ async function requestOmniReturns(
     });
 
     body = await response.text();
+ 
   } catch {
     throw new Error(`Could not reach the Omni Return ${action} API.`);
   }
@@ -153,7 +160,10 @@ export async function loadOmniReturns(
   }
 
   return {
-    records: payload.records,
+    records: payload.records.map((record) => ({
+      ...record,
+      submitted_by: record.s1_name?.trim() || record.submitted_by?.trim() || "",
+    })),
     total: Number(payload.total ?? 0),
     limit: Number(payload.limit ?? PAGE_SIZE),
     offset: Number(payload.offset ?? offset),

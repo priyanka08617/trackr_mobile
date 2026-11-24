@@ -1,11 +1,11 @@
-import { tableDateRange } from "./reportDateRange";
+import type { AreaIconName } from "@/components/AreaIcon";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
-import { loadLocationFilterOptions } from "./locationFilters";
-import type { ReportColumn } from "./reportTableColumns";
 import { readApiJson } from "../../common/services/DashboardService";
+import { loadLocationFilterOptions } from "./locationFilters";
+import { tableDateRange } from "./reportDateRange";
+import type { ReportColumn } from "./reportTableColumns";
 import { normalizeTrackerText } from "./trackerText";
-import type { AreaIconName } from "@/components/AreaIcon";
 
 const PAGE_SIZE = 50;
 
@@ -157,6 +157,8 @@ export async function loadTrackerReportPage(
   trackerId: TrackerId,
   filters: TrackerFilters,
   offset: number,
+  limit = PAGE_SIZE,
+  signal?: AbortSignal,
 ): Promise<TrackerReportPage> {
   const baseUrl = await getTrackerBaseUrl();
   const token = await getAuthToken();
@@ -170,7 +172,7 @@ export async function loadTrackerReportPage(
   const params = new URLSearchParams({
     draw: String(Math.floor(offset / PAGE_SIZE) + 1),
     start: String(offset),
-    length: String(PAGE_SIZE),
+    length: String(limit),
     from: tableRange.from,
     to: tableRange.to,
     region: filters.region,
@@ -187,6 +189,7 @@ export async function loadTrackerReportPage(
   try {
     response = await fetch(url, {
       method: endpoint.method,
+      signal,
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${token}`,
@@ -198,7 +201,8 @@ export async function loadTrackerReportPage(
       },
       body: endpoint.method === "POST" ? params.toString() : undefined,
     });
-  } catch {
+  } catch (cause) {
+    if (signal?.aborted) throw cause;
     throw new Error("Could not reach this tracker report.");
   }
 
@@ -229,13 +233,15 @@ export async function loadTrackerReportPage(
     columns?: unknown;
     recordsFiltered?: number | string;
     recordsTotal?: number | string;
+    total?: number | string;
+    meta?: Record<string, unknown>;
   };
   if (!Array.isArray(value.data)) {
     throw new Error("The tracker report returned an unexpected response.");
   }
 
   const rows = value.data
-    .slice(0, PAGE_SIZE)
+    .slice(0, limit)
     .filter(
       (row): row is Record<string, unknown> =>
         typeof row === "object" && row !== null,
@@ -244,9 +250,20 @@ export async function loadTrackerReportPage(
       ...row,
       id: String(row.id ?? row.ID ?? `tracker-${offset + index}`),
     }));
-  const total = Number(
-    value.recordsFiltered ?? value.recordsTotal ?? rows.length,
-  );
+  const totalValue =
+    value.recordsFiltered ??
+    value.recordsTotal ??
+    value.total ??
+    value.meta?.recordsFiltered ??
+    value.meta?.recordsTotal ??
+    value.meta?.total;
+  const parsedTotal = Number(totalValue);
+  const total =
+    totalValue === undefined || totalValue === null || totalValue === ""
+      ? rows.length
+      : Number.isFinite(parsedTotal)
+        ? Math.max(0, parsedTotal)
+        : rows.length;
 
   const columns: ReportColumn[] = Array.isArray(value.columns)
     ? value.columns.flatMap((column: unknown) => {
@@ -261,9 +278,9 @@ export async function loadTrackerReportPage(
   return {
     columns,
     rows,
-    total: Number.isFinite(total) ? total : rows.length,
+    total,
     offset,
-    limit: PAGE_SIZE,
+    limit,
   };
 }
 

@@ -1,78 +1,88 @@
 import { AppButton } from "@/components/AppButton";
 import {
-    AreaHeaderBackContext,
-    AreaHeaderBackVisibleContext,
-    AreaHeaderTitleContext,
+  AreaHeaderBackContext,
+  AreaHeaderBackVisibleContext,
+  AreaHeaderTitleContext,
 } from "@/components/AreaHeaderBackContext";
+import DateField from "@/components/DateField";
+import SelectField from "@/components/SelectField";
+import DynamicDataTable, {
+  type DynamicColumn,
+  type DynamicTableRow,
+} from "@/components/table/DynamicAutoDataTable";
 import { COLORS, FONT_SIZE, SPACING } from "@/constants/theme";
 import { Directory, File, Paths } from "expo-file-system";
 import { router } from "expo-router";
 import {
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import DateField from "../../../components/DateField";
-import SelectField from "../../../components/SelectField";
 import { prepareReportCsv } from "../services/reportCsv";
 import {
-    exportFasciaReport,
-    loadFasciaReport,
-    loadFasciaReportOptions,
-    type FasciaReportFilters,
-    type FasciaReportPage,
-    type FasciaReportRow,
-    type FasciaReportStore,
+  exportFasciaReport,
+  loadFasciaReport,
+  loadFasciaReportOptions,
+  type FasciaReportFilters,
+  type FasciaReportPage,
+  type FasciaReportRow,
+  type FasciaReportStore,
 } from "../services/ReportService";
 import { today, validDate } from "../services/service";
 import {
-    isPickerCancellation,
-    trackerPlainText,
+  isPickerCancellation,
+  trackerPlainText,
 } from "../services/trackerText";
 
 // ==============================================
 // TABLE COLUMN DEFINITIONS
 // ==============================================
 
-interface TableColumn {
-  key: keyof FasciaReportRow | "store_name";
-  title: string;
-  width: number;
-  align?: "left" | "center" | "right";
-}
-
-const COLUMNS: TableColumn[] = [
-  { key: "fascia_date", title: "Date", width: 100 },
-  { key: "store_name", title: "Store", width: 160 },
-  { key: "region", title: "Region", width: 110 },
-  { key: "zone", title: "Zone", width: 100 },
-  { key: "division_group", title: "Div. Group", width: 120 },
-  { key: "division", title: "Division", width: 120 },
-  { key: "section", title: "Section", width: 110 },
-  { key: "department", title: "Department", width: 130 },
-  { key: "season_flag", title: "Season", width: 90, align: "center" },
-  { key: "floor", title: "Floor", width: 80, align: "center" },
-  { key: "fascia_plan", title: "Fascia Plan", width: 130 },
-  { key: "actual_fascia", title: "Actual", width: 130 },
-  { key: "submitted_by", title: "Submitted By", width: 140 },
-  { key: "submitted_on", title: "Submitted On", width: 150 },
-  { key: "status", title: "Status", width: 100, align: "center" },
+const COLUMNS: DynamicColumn[] = [
+  { dataIndex: "fascia_date", title: "Date", width: 100 },
+  { dataIndex: "store_name", title: "Store", width: 160 },
+  { dataIndex: "region", title: "Region", width: 110 },
+  { dataIndex: "zone", title: "Zone", width: 100 },
+  { dataIndex: "division_group", title: "Div. Group", width: 120 },
+  { dataIndex: "division", title: "Division", width: 120 },
+  { dataIndex: "section", title: "Section", width: 110 },
+  { dataIndex: "department", title: "Department", width: 130 },
+  { dataIndex: "season_flag", title: "Season", width: 90, align: "center" },
+  { dataIndex: "floor", title: "Floor", width: 80, align: "center" },
+  { dataIndex: "fascia_plan", title: "Fascia Plan", width: 130 },
+  { dataIndex: "actual_fascia", title: "Actual", width: 130 },
+  { dataIndex: "submitted_by", title: "Submitted By", width: 140 },
+  { dataIndex: "submitted_on", title: "Submitted On", width: 150 },
+  {
+    dataIndex: "status",
+    title: "Status",
+    width: 100,
+    align: "center",
+    render: (record) => (
+      <Text
+        style={{
+          color: record.status === "Pending" ? COLORS.danger : COLORS.success,
+          fontWeight: "600",
+          textAlign: "center",
+        }}
+      >
+        {String(record.status ?? "-")}
+      </Text>
+    ),
+  },
 ];
-
-const TOTAL_WIDTH = COLUMNS.reduce((sum, c) => sum + c.width, 0);
 
 // ==============================================
 // HELPERS
@@ -90,12 +100,6 @@ const EMPTY_FILTERS: FasciaReportFilters = {
 const text = (value: string | null | undefined) =>
   value ? trackerPlainText(value) : "-";
 
-function cellValue(item: FasciaReportRow, key: TableColumn["key"]): string {
-  const raw = (item as unknown as Record<string, unknown>)[key];
-  if (raw === null || raw === undefined) return "-";
-  return text(String(raw));
-}
-
 // ==============================================
 // SCREEN
 // ==============================================
@@ -112,6 +116,22 @@ export default function FasciaReportScreen() {
   const [message, setMessage] = useState<string>();
   const busy = useRef(false);
   const generation = useRef(0);
+  // Map API rows to the common table's record type.
+  const tableData = useMemo<DynamicTableRow[]>(
+    () =>
+      (report?.records ?? []).map((row: FasciaReportRow) => {
+        const record: DynamicTableRow = { ...row, __rowKey: row.id };
+        for (const column of COLUMNS) {
+          if (column.dataIndex === "status") continue;
+          const raw = record[column.dataIndex];
+          record[column.dataIndex] =
+            raw === null || raw === undefined ? "-" : text(String(raw));
+        }
+        return record;
+      }),
+    [report?.records],
+  );
+
   const backHandlerRef = useContext(AreaHeaderBackContext);
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
   const setHeaderTitle = useContext(AreaHeaderTitleContext);
@@ -332,72 +352,6 @@ export default function FasciaReportScreen() {
   }
 
   // ==============================================
-  // TABLE ROW
-  // ==============================================
-
-  function renderRow({
-    item,
-    index,
-  }: {
-    item: FasciaReportRow;
-    index: number;
-  }) {
-    const isEven = index % 2 === 0;
-    return (
-      <View style={[styles.tr, isEven && styles.trEven]}>
-        {COLUMNS.map((col) => {
-          const value = cellValue(item, col.key);
-          const isStatus = col.key === "status";
-          return (
-            <View key={col.key} style={[styles.td, { width: col.width }]}>
-              <Text
-                numberOfLines={2}
-                style={[
-                  styles.tdText,
-                  col.align === "center" && styles.alignCenter,
-                  col.align === "right" && styles.alignRight,
-                  isStatus && {
-                    color:
-                      item.status === "Pending"
-                        ? COLORS.danger
-                        : COLORS.success,
-                    fontWeight: "600",
-                  },
-                ]}
-              >
-                {value}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-    );
-  }
-
-  // ==============================================
-  // TABLE HEADER
-  // ==============================================
-
-  const tableHeader = (
-    <View style={styles.thead}>
-      {COLUMNS.map((col) => (
-        <View key={col.key} style={[styles.th, { width: col.width }]}>
-          <Text
-            numberOfLines={2}
-            style={[
-              styles.thText,
-              col.align === "center" && styles.alignCenter,
-              col.align === "right" && styles.alignRight,
-            ]}
-          >
-            {col.title}
-          </Text>
-        </View>
-      ))}
-    </View>
-  );
-
-  // ==============================================
   // RENDER
   // ==============================================
 
@@ -460,10 +414,11 @@ export default function FasciaReportScreen() {
         <View style={styles.filterRow}>
           <View style={styles.filterColumn}>
             <SelectField
-              label="Zone"
+              label=""
+              placeholder="Select  Zone"
               value={filters.zone}
               options={[
-                { value: "", label: "All" },
+                { value: "", label: "All Zone" },
                 ...zones.map((value) => ({ value, label: value })),
               ]}
               disabled={loading || exporting}
@@ -479,10 +434,11 @@ export default function FasciaReportScreen() {
           </View>
           <View style={styles.filterColumn}>
             <SelectField
-              label="Region"
+              label=""
               value={filters.region}
+              placeholder="Select  Region"
               options={[
-                { value: "", label: "All" },
+                { value: "", label: "All Region" },
                 ...regions.map((value) => ({ value, label: value })),
               ]}
               disabled={loading || exporting}
@@ -495,7 +451,8 @@ export default function FasciaReportScreen() {
         <View style={styles.filterRow}>
           <View style={styles.filterColumn}>
             <SelectField
-              label="Store"
+              label=""
+              placeholder="Select  Store"
               value={filters.store}
               options={[
                 { value: "", label: "All" },
@@ -512,7 +469,8 @@ export default function FasciaReportScreen() {
           </View>
           <View style={styles.filterColumn}>
             <SelectField
-              label="Remark"
+              label=""
+              placeholder="Select  Remark"
               value={filters.status}
               options={[
                 { value: "", label: "All" },
@@ -529,13 +487,6 @@ export default function FasciaReportScreen() {
         <View style={styles.filterRow}>
           <View style={styles.filterColumn}>
             <AppButton
-              title="Apply filters"
-              onPress={() => void loadReport()}
-              disabled={loading || exporting}
-            />
-          </View>
-          <View style={styles.filterColumn}>
-            <AppButton
               title="Export CSV"
               variant="outline"
               onPress={() => void exportCsv()}
@@ -543,46 +494,51 @@ export default function FasciaReportScreen() {
               disabled={loading}
             />
           </View>
+          <View style={styles.filterColumn}>
+            <AppButton
+              title="Apply filters"
+              onPress={() => void loadReport()}
+              disabled={loading || exporting}
+            />
+          </View>
         </View>
-        <Text style={styles.detail}>{report?.total ?? 0} records</Text>
+        {/* <Text style={styles.detail}>{report?.total ?? 0} records</Text> */}
       </ScrollView>
 
-      {/* ── Table (scrolls horizontally) ───────────── */}
+      {/* Shared table: local search and pagination for API-loaded records. */}
       <ScrollView
-        horizontal
-        style={styles.tableScroll}
-        contentContainerStyle={{ width: TOTAL_WIDTH }}
-        showsHorizontalScrollIndicator
+        style={styles.tableArea}
+        contentContainerStyle={styles.tableContent}
       >
-        <View>
-          {tableHeader}
-          <FlatList
-            data={report?.records ?? []}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={renderRow}
-            style={{ width: TOTAL_WIDTH }}
-            contentContainerStyle={styles.tableContent}
-            ListEmptyComponent={
-              !loading && !error ? (
-                <Text style={styles.emptyText}>
-                  No matching fascia records found.
-                </Text>
-              ) : null
-            }
-            ListFooterComponent={
-              report && report.records.length < report.total ? (
-                <View style={styles.loadMoreWrap}>
-                  <AppButton
-                    title="Load more"
-                    variant="outline"
-                    disabled={loading || exporting}
-                    onPress={() => void loadReport(true)}
-                  />
-                </View>
-              ) : null
-            }
-          />
-        </View>
+        <DynamicDataTable
+          columns={COLUMNS}
+          data={tableData}
+          height={420}
+          refreshKey={`${applied.from}-${applied.to}-${applied.zone}-${applied.region}-${applied.store}-${applied.status}`}
+          // showSearch
+          // showColumnFilter
+          showPagination
+          // showPageSize
+          // pageSize={10}
+          // pageSizeOptions={[10, 25, 50, 100]}
+          loading={loading}
+          searchPlaceholder="Search loaded fascia records..."
+          emptyMessage="No matching fascia records found."
+        />
+        {report && report.records.length < report.total && (
+          <View style={styles.loadMoreWrap}>
+            <Text style={styles.detail}>
+              {report.records.length} of {report.total} records loaded. Search
+              and page navigation apply to loaded records.
+            </Text>
+            <AppButton
+              title="Load more records"
+              variant="outline"
+              disabled={loading || exporting}
+              onPress={() => void loadReport(true)}
+            />
+          </View>
+        )}
       </ScrollView>
 
       {loading && (
@@ -603,9 +559,10 @@ const styles = StyleSheet.create({
 
   // ── Filters ─────────────────────────────────────
   filtersScroll: {
+    flexGrow: 0,
     paddingHorizontal: SPACING.md,
     paddingTop: SPACING.md,
-    maxHeight: 340,
+    maxHeight: 300,
   },
   form: {
     gap: SPACING.sm,
@@ -628,64 +585,17 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
 
-  tableScroll: {
+  tableArea: {
     flex: 1,
-    margin: SPACING.sm,
-    borderTopWidth: 1,
-    borderColor: COLORS.border,
+    // minHeight: 0,
+    marginTop: 5,
+    marginHorizontal: SPACING.sm,
+    marginBottom: SPACING.sm,
   },
   tableContent: { paddingBottom: SPACING.xl },
-
-  thead: {
-    flexDirection: "row",
-    backgroundColor: COLORS.primary,
-    borderBottomWidth: 1,
-    borderColor: COLORS.border,
-  },
-  th: {
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.sm,
-    justifyContent: "center",
-    borderRightWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  thText: {
-    color: COLORS.white,
-    fontSize: FONT_SIZE.sm,
-    fontWeight: "700",
-  },
-
-  tr: {
-    flexDirection: "row",
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderColor: COLORS.border,
-  },
-  trEven: {
-    backgroundColor: "#f7f9fc",
-  },
-  td: {
-    paddingVertical: SPACING.xs,
-    paddingHorizontal: SPACING.sm,
-    justifyContent: "center",
-    borderRightWidth: 1,
-    borderColor: COLORS.border,
-  },
-  tdText: {
-    color: COLORS.text,
-    fontSize: FONT_SIZE.sm,
-  },
-
-  alignCenter: { textAlign: "center" },
-  alignRight: { textAlign: "right" },
-
-  emptyText: {
-    color: COLORS.textLight,
-    fontSize: FONT_SIZE.sm,
-    padding: SPACING.lg,
-  },
   loadMoreWrap: {
     padding: SPACING.md,
+    gap: SPACING.sm,
     alignItems: "center",
   },
   loadingOverlay: {

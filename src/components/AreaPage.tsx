@@ -31,6 +31,6 @@ export default function AreaPage({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.surface },
-  content: { padding: 5, gap: 5, paddingBottom: SPACING.xxl },
+  content: { padding: 3, gap: 5, paddingBottom: SPACING.xxl },
   compactContent: { paddingHorizontal: 9, paddingTop: 9 },
 });

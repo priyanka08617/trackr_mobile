@@ -1,19 +1,20 @@
 // ================================================================================================
 import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
+
 const REGISTER_ITEMS = [
   { id: "alteration", title: "Alteration Report", icon: "cut" },
-  { id: "footfall", title: "Footfall Report", icon: "shoePrints" },
-  { id: "exchange", title: "Exchange Report", icon: "report" },
-  { id: "electricity", title: "Electricity Report", icon: "dashboard" },
-  { id: "generator", title: "Generator Report", icon: "generator" },
-  { id: "hk_sg", title: "HK Attendance Report", icon: "check" },
-  { id: "lost_found", title: "Lost & Found Report", icon: "faq" },
-  { id: "scrap", title: "Scrap Report", icon: "ban" },
-  { id: "global_count", title: "Global Count Report", icon: "plan" },
-  { id: "pi", title: "PI Report", icon: "globe" },
-  { id: "key_movement", title: "Key Movement Report", icon: "setting" },
-  { id: "fmcg_price_mismatch", title: "FMCG Price Mismatch", icon: "report" },
+  { id: "footfall", title: "Footfall Report", icon: "walking" },
+  { id: "exchange", title: "Exchange Report", icon: "exchange" },
+  { id: "electricity", title: "Electricity Report", icon: "bolt" },
+  { id: "generator", title: "Generator Report", icon: "gasPump" },
+  { id: "hk_sg", title: "HK Attendance Report", icon: "userCheck" },
+  { id: "lost_found", title: "Lost & Found Report", icon: "search" },
+  { id: "scrap", title: "Scrap Report", icon: "recycle" },
+  { id: "global_count", title: "Global Count Report", icon: "calculator" },
+  { id: "pi", title: "PI Report", icon: "locationPin" },
+  { id: "key_movement", title: "Key Movement Report", icon: "key" },
+  // { id: "fmcg_price_mismatch", title: "FMCG Price Mismatch", icon: "receipt" },
 ] as const;
 
 export default function AllRegister() {

@@ -331,9 +331,9 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    padding: 16,
-    gap: SPACING.lg,
-    paddingBottom: SPACING.xxl,
+    padding: SPACING.sm,
+    gap: SPACING.md,
+    paddingBottom: SPACING.lg,
     width: "100%",
     maxWidth: 760,
     alignSelf: "center",
@@ -343,17 +343,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    gap: SPACING.sm,
-    paddingVertical: SPACING.sm,
+    gap: SPACING.xs,
+    paddingVertical: SPACING.xs,
   },
 
   categoryButton: {
-    minHeight: 44,
+    minHeight: 36,
     borderWidth: 1,
     borderColor: COLORS.primary,
     borderRadius: 6,
-    paddingVertical: 9,
-    paddingHorizontal: 15,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.2)",
@@ -390,9 +390,10 @@ const styles = StyleSheet.create({
   questionRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: SPACING.md,
-    padding: SPACING.lg,
-    minHeight: 64,
+    gap: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    minHeight: 48,
   },
 
   questionIcon: {

@@ -66,13 +66,13 @@ const HOME_CARDS = [
   },
 
   {
-    title: "Library of Important Guidelines",
+    title: "Important Guidelines",
     image: require("../../../../assets/images/icons/dashboard/library_of_guideline.png"),
     screen: "library_of_important_guidelines",
   },
 
   {
-    title: "Pending Omni Return Tracker",
+    title: "Omni Return Tracker",
     image: require("../../../../assets/images/icons/dashboard/online_return_trackr.png"),
     screen: "pending_omni_return_tracker",
   },
@@ -157,6 +157,6 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, padding: 6 },
   cell: { flexGrow: 1, flexBasis: "45%", minWidth: 0 },
 });

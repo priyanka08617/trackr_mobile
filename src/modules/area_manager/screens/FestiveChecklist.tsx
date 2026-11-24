@@ -23,19 +23,21 @@ import AppHeader from "@/components/AppHeader";
 import AppInput from "@/components/AppInput";
 import AppLoader from "@/components/AppLoader";
 import {
+  AreaHeaderBackContext,
+  AreaHeaderBackVisibleContext,
+  AreaHeaderTitleContext,
+} from "@/components/AreaHeaderBackContext";
+import DynamicDataTable, {
+  type DynamicColumn,
+} from "@/components/table/DynamicAutoDataTable";
+import {
   CARD,
   COLORS,
   FONT_SIZE,
   FONT_WEIGHT,
   SPACING,
 } from "@/constants/theme";
-import {
-  AreaHeaderBackContext,
-  AreaHeaderBackVisibleContext,
-  AreaHeaderTitleContext,
-} from "@/components/AreaHeaderBackContext";
 import { reportTableValue } from "../../report/services/reportTableFormat";
-import DataTable, { type FasciaColumn } from "./FasciaTable";
 import Settings from "./Settings";
 
 export type ChecklistStatus = 1 | 2 | 3;
@@ -82,19 +84,6 @@ const STATUS = { 1: "Waiting for approval", 2: "Approved", 3: "Rejected" };
 const ANSWER = { 1: "Yes", 2: "No", 3: "Not Applicable" };
 const STATUS_COLOR = { 1: COLORS.warning, 2: COLORS.success, 3: COLORS.danger };
 const PAGE_SIZE = 10;
-const CHECKLIST_COLUMNS: FasciaColumn[] = [
-  { title: "#", width: 56 },
-  { title: "Store", width: 200 },
-  { title: "Category", width: 220 },
-  { title: "Festive Date", width: 140 },
-  { title: "Created By", width: 180 },
-  { title: "Created On", width: 190 },
-  { title: "Reviewed By", width: 180 },
-  { title: "Reviewed On", width: 190 },
-  { title: "Status", width: 180 },
-  { title: "View", width: 90 },
-  { title: "Actions", width: 180 },
-];
 
 type Confirmation =
   | { kind: "review"; id: string; status: 2 | 3 }
@@ -113,14 +102,19 @@ export default function FestiveChecklist({
   initialSubmissionId,
   embedded = false,
 }: FestiveChecklistProps) {
-  const { width, fontScale } = useWindowDimensions();
+  const { width, height, fontScale } = useWindowDimensions();
   const compact = width < 400 || fontScale > 1.2;
   const saveInFlight = useRef(false);
+  const detailRequestId = useRef(0);
   const [notice, setNotice] = useState<{
     title: string;
     message: string;
   } | null>(null);
   const [search, setSearch] = useState("");
+  const [listRevision, setListRevision] = useState(0);
+  const [returnedPendingSubmission, setReturnedPendingSubmission] =
+    useState<FestiveSubmission | null>(null);
+  const submissionsSnapshot = useRef<FestiveSubmission[]>(submissions);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(
     initialSubmissionId ?? null,
@@ -142,11 +136,29 @@ export default function FestiveChecklist({
   const goBack = useCallback(() => {
     if (saving) return;
     if (selectedId) {
+      const returningSubmission =
+        (loadedDetail?.id === selectedId ? loadedDetail : undefined) ??
+        submissions.find((item) => item.id === selectedId);
+      // Ignore any detail request that finishes after returning to the list.
+      detailRequestId.current += 1;
+      if (returningSubmission?.status === 1) {
+        setReturnedPendingSubmission(returningSubmission);
+        if (submissions.length > 0) submissionsSnapshot.current = submissions;
+      }
       setSelectedId(null);
       setEditingQuestion(null);
       setLoadedDetail(null);
-    } else onBackPress?.();
-  }, [onBackPress, saving, selectedId]);
+      setDetailError(undefined);
+      setDetailLoading(false);
+      setConfirmation(null);
+      setNotice(null);
+      setPage(1);
+      setListRevision((revision) => revision + 1);
+      if (returningSubmission?.status !== 1) void onRefresh?.();
+      return;
+    }
+    onBackPress?.();
+  }, [loadedDetail, onBackPress, onRefresh, saving, selectedId, submissions]);
   useEffect(() => {
     if (!embedded) return;
     if (headerBackRef) headerBackRef.current = goBack;
@@ -185,7 +197,20 @@ export default function FestiveChecklist({
     }
     return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [selected?.questions]);
-  const filtered = submissions.filter((item) =>
+  const visibleSubmissions = useMemo(() => {
+    const baseSubmissions =
+      returnedPendingSubmission && submissions.length === 0
+        ? submissionsSnapshot.current
+        : submissions;
+    if (
+      !returnedPendingSubmission ||
+      baseSubmissions.some((item) => item.id === returnedPendingSubmission.id)
+    ) {
+      return baseSubmissions;
+    }
+    return [returnedPendingSubmission, ...baseSubmissions];
+  }, [returnedPendingSubmission, submissions]);
+  const filtered = visibleSubmissions.filter((item) =>
     item.category.toLowerCase().includes(search.trim().toLowerCase()),
   );
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -204,6 +229,8 @@ export default function FestiveChecklist({
 
   async function openSubmission(id: string) {
     if (saveInFlight.current) return;
+    if (submissions.length > 0) submissionsSnapshot.current = submissions;
+    const requestId = ++detailRequestId.current;
     setSelectedId(id);
     setEditingQuestion(null);
     setLoadedDetail(null);
@@ -211,15 +238,18 @@ export default function FestiveChecklist({
     if (!onLoadDetails) return;
     setDetailLoading(true);
     try {
-      setLoadedDetail(await onLoadDetails(id));
+      const detail = await onLoadDetails(id);
+      if (requestId === detailRequestId.current) setLoadedDetail(detail);
     } catch (cause) {
-      setDetailError(
-        cause instanceof Error
-          ? cause.message
-          : "Unable to load checklist details.",
-      );
+      if (requestId === detailRequestId.current) {
+        setDetailError(
+          cause instanceof Error
+            ? cause.message
+            : "Unable to load checklist details.",
+        );
+      }
     } finally {
-      setDetailLoading(false);
+      if (requestId === detailRequestId.current) setDetailLoading(false);
     }
   }
 
@@ -301,33 +331,50 @@ export default function FestiveChecklist({
           variant="outline"
           disabled={current <= 1 || saving}
           onPress={() => change(current - 1)}
+          style={styles.paginationButton}
+          textStyle={styles.paginationButtonText}
         />
         <Text style={styles.text}>
-          Page {current} of {total}
+          {/* Page {current} of {total} */}
+          {current}/{total}
         </Text>
         <AppButton
           title="Next"
           variant="outline"
           disabled={current >= total || saving}
           onPress={() => change(current + 1)}
+          style={styles.paginationButton}
+          textStyle={styles.paginationButtonText}
         />
       </View>
     );
   }
 
-  function reviewActions(item: FestiveSubmission) {
+  function reviewActions(item: FestiveSubmission, tableRow = false) {
     if (item.status !== 1 || !onReview) return null;
     return (
-      <View style={styles.actions}>
+      <View style={[styles.actions, tableRow && styles.tableActions]}>
         <AppButton
           title="Approve"
-          style={styles.reviewAction}
+          style={tableRow ? styles.tableReviewAction : styles.reviewAction}
+          hitSlop={
+            tableRow ? { top: 8, right: 0, bottom: 8, left: 0 } : undefined
+          }
+          textStyle={
+            tableRow ? styles.tableReviewActionText : styles.reviewActionText
+          }
           disabled={saving}
           onPress={() => confirm({ kind: "review", id: item.id, status: 2 })}
         />
         <AppButton
           title="Reject"
-          style={styles.reviewAction}
+          style={tableRow ? styles.tableReviewAction : styles.reviewAction}
+          hitSlop={
+            tableRow ? { top: 8, right: 0, bottom: 8, left: 0 } : undefined
+          }
+          textStyle={
+            tableRow ? styles.tableReviewActionText : styles.reviewActionText
+          }
           variant="danger"
           disabled={saving}
           onPress={() => confirm({ kind: "review", id: item.id, status: 3 })}
@@ -335,6 +382,147 @@ export default function FestiveChecklist({
       </View>
     );
   }
+
+  const tableData = pageItems.map((item, index) => ({
+    id: item.id,
+    serial: (currentPage - 1) * PAGE_SIZE + index + 1,
+    store: item.store,
+    category: item.category,
+    festiveDate: reportTableValue("date", item.festiveDate),
+    createdBy: item.createdBy,
+    createdOn: reportTableValue("created_on", item.createdOn),
+    reviewedBy: item.status !== 1 ? (item.reviewedBy ?? "-") : "-",
+    reviewedOn:
+      item.status !== 1 ? reportTableValue("created_on", item.reviewedOn) : "-",
+    status: STATUS[item.status],
+  }));
+  const findTableSubmission = (id: unknown) =>
+    pageItems.find((item) => item.id === String(id));
+  const compactCell = (value: unknown) => (
+    // <Text numberOfLines={2} style={styles.tableCellText}>
+    <Text style={styles.tableCellText}>{String(value ?? "-")}</Text>
+  );
+  const tableColumns: DynamicColumn[] = [
+    {
+      title: "#",
+      dataIndex: "serial",
+      // width: 56,
+      align: "center",
+      searchable: false,
+      render: (record) => compactCell(record.serial),
+    },
+    {
+      title: "Store",
+      dataIndex: "store",
+      // width: 200,
+      render: (record) => compactCell(record.store),
+    },
+    {
+      title: "Category",
+      dataIndex: "category",
+      // width: 220,
+      render: (record) => compactCell(record.category),
+    },
+    {
+      title: "Festive Date",
+      dataIndex: "festiveDate",
+      // width: 140,
+      render: (record) => compactCell(record.festiveDate),
+    },
+    {
+      title: "Created By",
+      dataIndex: "createdBy",
+      // width: 180,
+      render: (record) => compactCell(record.createdBy),
+    },
+    {
+      title: "Created On",
+      dataIndex: "createdOn",
+      // width: 190,
+      render: (record) => compactCell(record.createdOn),
+    },
+    {
+      title: "Reviewed By",
+      dataIndex: "reviewedBy",
+      // width: 180,
+      render: (record) => compactCell(record.reviewedBy),
+    },
+    {
+      title: "Reviewed On",
+      dataIndex: "reviewedOn",
+      // width: 190,
+      render: (record) => compactCell(record.reviewedOn),
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      // width: 180,
+      render: (record) => {
+        const item = findTableSubmission(record.id);
+        if (!item) return compactCell(record.status);
+        return (
+          <View
+            style={[
+              styles.tableStatusBadge,
+              {
+                backgroundColor:
+                  item.status === 1
+                    ? "#FFF0B3"
+                    : item.status === 2
+                      ? "#E4F3E8"
+                      : "#FCE5E5",
+              },
+            ]}
+          >
+            <Text
+              accessibilityLabel={`Status: ${STATUS[item.status]}`}
+              style={[
+                styles.tableStatus,
+                {
+                  color:
+                    item.status === 1 ? "#805500" : STATUS_COLOR[item.status],
+                },
+              ]}
+            >
+              {STATUS[item.status]}
+            </Text>
+          </View>
+        );
+      },
+    },
+    {
+      title: "View",
+      dataIndex: "id",
+      // width: 90,
+      searchable: false,
+      render: (record) => {
+        const item = findTableSubmission(record.id);
+        if (!item) return compactCell("-");
+        return (
+          <AppButton
+            title="View"
+            variant="secondary"
+            disabled={saving}
+            style={styles.viewButton}
+            hitSlop={{ top: 8, right: 0, bottom: 8, left: 0 }}
+            textStyle={styles.viewButtonText}
+            accessibilityLabel={`View ${item.category} checklist for ${item.store}`}
+            onPress={() => void openSubmission(item.id)}
+          />
+        );
+      },
+    },
+    {
+      title: "Actions",
+      dataIndex: "id",
+      // width: 200,
+      searchable: false,
+      render: (record) => {
+        const item = findTableSubmission(record.id);
+        return item ? (reviewActions(item, true) ?? compactCell("-")) : "-";
+      },
+    },
+  ];
 
   function metadata(item: FestiveSubmission, details = false) {
     if (details) {
@@ -359,7 +547,18 @@ export default function FestiveChecklist({
       ];
       return (
         <View style={styles.metadata}>
-          <View style={styles.statusRow}>
+          <View style={styles.detailFields}>
+            {fields.map(([label, value]) => (
+              <View
+                key={label}
+                style={[styles.detailField, compact && styles.fullField]}
+              >
+                <Text style={styles.fieldLabel}>{label}</Text>
+                <Text style={styles.fieldValue}>{value}</Text>
+              </View>
+            ))}
+            {/*
+            <View style={styles.statusRowDetails}> */}
             <View
               style={[
                 styles.detailStatusBadge,
@@ -387,18 +586,8 @@ export default function FestiveChecklist({
               </Text>
             </View>
           </View>
-          <View style={styles.detailFields}>
-            {fields.map(([label, value]) => (
-              <View
-                key={label}
-                style={[styles.detailField, compact && styles.fullField]}
-              >
-                <Text style={styles.fieldLabel}>{label}</Text>
-                <Text style={styles.fieldValue}>{value}</Text>
-              </View>
-            ))}
-          </View>
         </View>
+        // </View>
       );
     }
     return (
@@ -468,15 +657,7 @@ export default function FestiveChecklist({
       {!embedded ? (
         <AppHeader
           title={selectedId ? "Festive Checklist Details" : "Festive Checklist"}
-          onBackPress={
-            selectedId
-              ? () => {
-                  setSelectedId(null);
-                  setEditingQuestion(null);
-                  setLoadedDetail(null);
-                }
-              : onBackPress
-          }
+          onBackPress={goBack}
           rightContent={
             <AppButton
               title="Setting"
@@ -497,171 +678,191 @@ export default function FestiveChecklist({
         </View>
       )}
       {selectedId ? (
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-        >
-          {selected ? (
-            <>
-              <View style={styles.card}>{metadata(selected, true)}</View>
-              {detailLoading ? (
-                <AppLoader message="Loading checklist details…" />
-              ) : detailError ? (
-                <View style={styles.errorBox}>
-                  <Text accessibilityRole="alert" style={styles.error}>
-                    {detailError}
-                  </Text>
-                  <AppButton
-                    title="Retry"
-                    onPress={() => {
-                      void openSubmission(selected.id);
-                    }}
-                  />
-                </View>
-              ) : (
-                <>
-                  {!selected.questions.length && (
-                    <Text style={styles.empty}>No question answers found.</Text>
-                  )}
-                  {questionGroups.map(([group, questions]) => (
-                    <View
-                      key={group}
-                      style={[
-                        styles.questionSection,
-                        questions.some(
-                          (question) => question.id === editingQuestion?.id,
-                        ) && styles.openDropdownSection,
-                      ]}
-                    >
-                      <View style={styles.sectionHeading}>
-                        <Text
-                          accessibilityRole="header"
-                          style={styles.fieldLabel}
-                        >
-                          {group}
-                        </Text>
-                      </View>
-                      {questions.map((question, index) => (
-                        <View
-                          key={question.id}
-                          style={[
-                            styles.question,
-                            editingQuestion?.id === question.id &&
-                              styles.openDropdownQuestion,
-                          ]}
-                        >
-                          <View style={styles.questionHeading}>
-                            <Text style={styles.questionNumber}>
-                              {index + 1}
-                            </Text>
-                            <Text style={[styles.text, styles.questionText]}>
-                              {question.question}
-                            </Text>
-                          </View>
+        <View style={styles.detailsContainer}>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+          >
+            {selected ? (
+              <>
+                <View style={styles.card}>{metadata(selected, true)}</View>
+                {detailLoading ? (
+                  <AppLoader message="Loading checklist details…" />
+                ) : detailError ? (
+                  <View style={styles.errorBox}>
+                    <Text accessibilityRole="alert" style={styles.error}>
+                      {detailError}
+                    </Text>
+                    <AppButton
+                      title="Retry"
+                      onPress={() => {
+                        void openSubmission(selected.id);
+                      }}
+                    />
+                  </View>
+                ) : (
+                  <>
+                    {!selected.questions.length && (
+                      <Text style={styles.empty}>
+                        No question answers found.
+                      </Text>
+                    )}
+                    {questionGroups.map(([group, questions], groupIndex) => (
+                      <View
+                        key={group}
+                        style={[
+                          styles.questionSection,
+                          questions.some(
+                            (question) => question.id === editingQuestion?.id,
+                          ) && styles.openDropdownSection,
+                        ]}
+                      >
+                        <View style={styles.sectionHeading}>
+                          <Text
+                            accessibilityRole="header"
+                            style={styles.fieldLabel}
+                          >
+                            {group}
+                          </Text>
+                        </View>
+                        {questions.map((question, index) => (
                           <View
+                            key={question.id}
                             style={[
-                              styles.answerRow,
-                              (width < 340 || fontScale > 1.2) &&
-                                styles.answerRowCompact,
+                              styles.question,
+                              editingQuestion?.id === question.id &&
+                                styles.openDropdownQuestion,
                             ]}
                           >
-                            <View style={styles.answerValue}>
-                              <Text style={styles.answerLabel}>Answer</Text>
-                              <Text
-                                style={[
-                                  styles.status,
-                                  {
-                                    color:
-                                      question.answer === 1
-                                        ? COLORS.success
-                                        : question.answer === 2
-                                          ? COLORS.danger
-                                          : COLORS.textLight,
-                                  },
-                                ]}
-                              >
-                                {ANSWER[question.answer]}
+                            <View style={styles.questionHeading}>
+                              <Text style={styles.questionNumber}>
+                                {index + 1}
+                              </Text>
+                              <Text style={[styles.text, styles.questionText]}>
+                                {question.question}
                               </Text>
                             </View>
-                            {selected.status === 1 && onUpdateAnswer && (
-                              <View style={styles.answerControl}>
-                                <Text style={styles.answerLabel}>
-                                  Edit Answer
-                                </Text>
-                                <Pressable
-                                  accessibilityRole="button"
-                                  accessibilityState={{
-                                    expanded:
-                                      editingQuestion?.id === question.id,
-                                    disabled: saving,
-                                  }}
-                                  accessibilityLabel={`Edit answer for question ${index + 1}: ${question.question}. Current answer: ${ANSWER[question.answer]}`}
-                                  style={styles.answerSelect}
-                                  disabled={saving}
-                                  onPress={() =>
-                                    setEditingQuestion((current) =>
-                                      current?.id === question.id
-                                        ? null
-                                        : question,
-                                    )
-                                  }
+                            <View
+                              style={[
+                                styles.answerRow,
+                                (width < 340 || fontScale > 1.2) &&
+                                  styles.answerRowCompact,
+                              ]}
+                            >
+                              <View style={styles.answerValue}>
+                                <Text style={styles.answerLabel}>Answer</Text>
+                                <Text
+                                  style={[
+                                    styles.status,
+                                    {
+                                      color:
+                                        question.answer === 1
+                                          ? COLORS.success
+                                          : question.answer === 2
+                                            ? COLORS.danger
+                                            : COLORS.textLight,
+                                    },
+                                  ]}
                                 >
-                                  <Text style={styles.text}>
-                                    {ANSWER[question.answer]}
-                                  </Text>
-                                  <Text style={styles.text}>{"\u2304"}</Text>
-                                </Pressable>
-                                {editingQuestion?.id === question.id && (
-                                  <View style={styles.answerOptions}>
-                                    {([1, 2, 3] as const).map((answer) => (
-                                      <Pressable
-                                        key={answer}
-                                        accessibilityRole="button"
-                                        accessibilityState={{
-                                          selected: question.answer === answer,
-                                        }}
-                                        style={[
-                                          styles.answerOption,
-                                          question.answer === answer &&
-                                            styles.selectedOption,
-                                        ]}
-                                        onPress={() => {
-                                          setEditingQuestion(null);
-                                          if (question.answer !== answer)
-                                            confirm({
-                                              kind: "answer",
-                                              id: selected.id,
-                                              answerId: question.id,
-                                              answer,
-                                            });
-                                        }}
-                                      >
-                                        <Text style={styles.text}>
-                                          {ANSWER[answer]}
-                                        </Text>
-                                      </Pressable>
-                                    ))}
-                                  </View>
-                                )}
+                                  {ANSWER[question.answer]}
+                                </Text>
                               </View>
-                            )}
+                              {selected.status === 1 && onUpdateAnswer && (
+                                <View style={styles.answerControl}>
+                                  <Text style={styles.answerLabel}>
+                                    Edit Answer
+                                  </Text>
+                                  <Pressable
+                                    accessibilityRole="button"
+                                    accessibilityState={{
+                                      expanded:
+                                        editingQuestion?.id === question.id,
+                                      disabled: saving,
+                                    }}
+                                    accessibilityLabel={`Edit answer for question ${index + 1}: ${question.question}. Current answer: ${ANSWER[question.answer]}`}
+                                    style={styles.answerSelect}
+                                    disabled={saving}
+                                    onPress={() =>
+                                      setEditingQuestion((current) =>
+                                        current?.id === question.id
+                                          ? null
+                                          : question,
+                                      )
+                                    }
+                                  >
+                                    <Text style={styles.text}>
+                                      {ANSWER[question.answer]}
+                                    </Text>
+                                    <Text style={styles.text}>{"\u2304"}</Text>
+                                  </Pressable>
+                                  {editingQuestion?.id === question.id && (
+                                    <View
+                                      style={[
+                                        styles.answerOptions,
+                                        groupIndex ===
+                                          questionGroups.length - 1 &&
+                                          index === questions.length - 1 &&
+                                          styles.answerOptionsAbove,
+                                      ]}
+                                    >
+                                      {([1, 2, 3] as const).map((answer) => (
+                                        <Pressable
+                                          key={answer}
+                                          accessibilityRole="button"
+                                          accessibilityState={{
+                                            selected:
+                                              question.answer === answer,
+                                          }}
+                                          style={[
+                                            styles.answerOption,
+                                            question.answer === answer &&
+                                              styles.selectedOption,
+                                          ]}
+                                          onPress={() => {
+                                            setEditingQuestion(null);
+                                            if (question.answer !== answer)
+                                              confirm({
+                                                kind: "answer",
+                                                id: selected.id,
+                                                answerId: question.id,
+                                                answer,
+                                              });
+                                          }}
+                                        >
+                                          <Text style={styles.text}>
+                                            {ANSWER[answer]}
+                                          </Text>
+                                        </Pressable>
+                                      ))}
+                                    </View>
+                                  )}
+                                </View>
+                              )}
+                            </View>
                           </View>
-                        </View>
-                      ))}
-                    </View>
-                  ))}
-                  {reviewActions(selected)}
-                </>
-              )}
-            </>
-          ) : loading ? (
-            <AppLoader message="Loading checklist details…" />
-          ) : (
-            <Text accessibilityRole="alert" style={styles.error}>
-              Record not found.
-            </Text>
-          )}
-        </ScrollView>
+                        ))}
+                      </View>
+                    ))}
+                  </>
+                )}
+              </>
+            ) : loading ? (
+              <AppLoader message="Loading checklist details…" />
+            ) : (
+              <Text accessibilityRole="alert" style={styles.error}>
+                Record not found.
+              </Text>
+            )}
+          </ScrollView>
+
+          {/* ✅ Fixed footer with Approve / Reject buttons */}
+          {selected &&
+            !detailLoading &&
+            !detailError &&
+            reviewActions(selected) && (
+              <View style={styles.fixedFooter}>{reviewActions(selected)}</View>
+            )}
+        </View>
       ) : (
         <View style={styles.screen}>
           <View style={styles.listControls}>
@@ -675,84 +876,37 @@ export default function FestiveChecklist({
                 setPage(1);
               }}
             />
-            <Text style={styles.selectorMeta}>
-              Swipe left or right to view all columns
-            </Text>
+            {/* <View style={styles.tableHelpRow}> */}
+            {/* <Text style={styles.selectorMeta}>
+                Swipe left or right to view all columns
+              </Text> */}
+            {/* {onRefresh && (
+                <AppButton
+                  title="Refresh"
+                  variant="outline"
+                  disabled={saving || loading}
+                  style={styles.refreshButton}
+                  textStyle={styles.refreshButtonText}
+                  onPress={onRefresh}
+                />
+              )} */}
+            {/* </View> */}
             {loading && <AppLoader message="Loading festive checklists..." />}
           </View>
           <View style={styles.tableContainer}>
-            <DataTable
-              key={currentPage}
-              columns={CHECKLIST_COLUMNS}
-              rows={pageItems}
-              extraData={{ saving }}
-              refreshing={loading}
-              onRefresh={
-                onRefresh
-                  ? () => {
-                      if (!saving && !loading) onRefresh();
-                    }
-                  : undefined
-              }
-              empty={
+            <DynamicDataTable
+              key={`${currentPage}-${listRevision}`}
+              columns={tableColumns}
+              data={tableData}
+              // height={Math.max(260, Math.min(520, height * 0.6))}
+              refreshKey={`${currentPage}-${listRevision}`}
+              emptyMessage={
                 loading
                   ? ""
                   : search
                     ? "No matching checklists."
                     : "No festive checklists available."
               }
-              renderCells={(item, index) => [
-                String((currentPage - 1) * PAGE_SIZE + index + 1),
-                item.store,
-                item.category,
-                reportTableValue("date", item.festiveDate),
-                item.createdBy,
-                reportTableValue("created_on", item.createdOn),
-                item.status !== 1 ? (item.reviewedBy ?? "-") : "-",
-                item.status !== 1
-                  ? reportTableValue("created_on", item.reviewedOn)
-                  : "-",
-                <View
-                  key="status"
-                  style={[
-                    styles.detailStatusBadge,
-                    {
-                      backgroundColor:
-                        item.status === 1
-                          ? "#FFF0B3"
-                          : item.status === 2
-                            ? "#E4F3E8"
-                            : "#FCE5E5",
-                    },
-                  ]}
-                >
-                  <Text
-                    accessibilityLabel={`Status: ${STATUS[item.status]}`}
-                    style={[
-                      styles.detailStatus,
-                      {
-                        color:
-                          item.status === 1
-                            ? "#805500"
-                            : STATUS_COLOR[item.status],
-                      },
-                    ]}
-                  >
-                    {STATUS[item.status]}
-                  </Text>
-                </View>,
-                <AppButton
-                  key="view"
-                  title="View"
-                  variant="secondary"
-                  disabled={saving}
-                  style={styles.viewButton}
-                  textStyle={styles.viewButtonText}
-                  accessibilityLabel={`View ${item.category} checklist for ${item.store}`}
-                  onPress={() => void openSubmission(item.id)}
-                />,
-                reviewActions(item) ?? "-",
-              ]}
             />
           </View>
           {filtered.length > 0 && (
@@ -880,21 +1034,73 @@ export default function FestiveChecklist({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.surface },
-  listControls: { padding: SPACING.md, gap: SPACING.md },
+  listControls: { padding: 3, gap: SPACING.md },
+  tableHelpRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: SPACING.sm,
+  },
+  refreshButton: { minHeight: 28, paddingHorizontal: SPACING.sm },
+  refreshButtonText: { fontSize: FONT_SIZE.xs },
   viewButton: {
-    width: 64,
-    minHeight: 36,
-    paddingHorizontal: SPACING.sm,
+    width: 40,
+    minHeight: 25,
+    paddingHorizontal: 4,
     alignSelf: "center",
   },
-  viewButtonText: { fontSize: FONT_SIZE.xs },
-  tableContainer: {
+  viewButtonText: { fontSize: 10 },
+  tableCellText: {
+    color: COLORS.text,
+    fontSize: 12,
+    lineHeight: 15,
+    includeFontPadding: false,
+    marginVertical: -5,
+  },
+  tableStatusBadge: {
+    // alignSelf: "flex-start",
+    // alignItems: "center",
+    // borderRadius: 16,
+    // paddingHorizontal: 6,
+    // paddingVertical: 2,
+    // marginVertical: -5,
+
+    alignSelf: "center",
+    alignItems: "center",
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  tableStatus: {
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: FONT_WEIGHT.semibold,
+    includeFontPadding: false,
+  },
+  //  marginVertical: -5
+  tableActions: { gap: 4, flexWrap: "nowrap" },
+  tableReviewAction: {
     flex: 1,
-    marginHorizontal: SPACING.md,
+    minWidth: 0,
+    minHeight: 26,
+    paddingHorizontal: 4,
+  },
+  tableReviewActionText: { fontSize: 10 },
+  tableContainer: {
+    // flex: 1,
+    width: "100%",
+    marginHorizontal: 0,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 10,
+    borderRadius: 5,
     overflow: "hidden",
+
+    // flex: 1,
+    // marginHorizontal: SPACING.md,
+    // borderWidth: 1,
+    // borderColor: COLORS.border,
+    // borderRadius: 10,
+    // overflow: "hidden",
   },
   selectorSection: { gap: SPACING.sm },
   selectorContent: { gap: SPACING.sm, paddingVertical: 2 },
@@ -933,22 +1139,47 @@ const styles = StyleSheet.create({
   },
   selectorMeta: { color: COLORS.textLight, fontSize: FONT_SIZE.sm },
   detailFields: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.md },
-  statusRow: { flexDirection: "row", justifyContent: "flex-end" },
+  statusRow: { flexDirection: "row", justifyContent: "flex-start" },
+  // detailStatusBadge: {
+  //   flexDirection: "row",
+  //   flexGrow: 0,
+  //   flexShrink: 1,
+  //   maxWidth: "100%",
+  //   borderRadius: 16,
+  //   paddingHorizontal: 5,
+  //   paddingVertical: 6,
+  // },
+  // detailStatus: {
+  //   textAlign: "center",
+  //   fontSize: FONT_SIZE.sm,
+  //   fontWeight: FONT_WEIGHT.semibold,
+  // },
+
   detailStatusBadge: {
     flexDirection: "row",
+    alignSelf: "flex-start",
+    alignItems: "center",
+    justifyContent: "center",
     flexGrow: 0,
-    flexShrink: 1,
-    maxWidth: "100%",
+    flexShrink: 0,
     borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
   },
+
   detailStatus: {
     textAlign: "center",
+    alignSelf: "center",
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.semibold,
+    includeFontPadding: false,
   },
-  detailField: { flexBasis: "46%", flexGrow: 1, gap: 4 },
+  // detailField: { flexBasis: "46%", flexGrow: 1, gap: 4 },
+  detailField: {
+    flexBasis: "48%",
+    flexGrow: 0,
+    gap: 4,
+  },
   fullField: { flexBasis: "100%" },
   fieldLabel: {
     color: COLORS.text,
@@ -1022,6 +1253,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     overflow: "hidden",
   },
+  answerOptionsAbove: { top: undefined, bottom: "100%" },
   answerOption: {
     minHeight: 44,
     paddingHorizontal: SPACING.sm,
@@ -1039,7 +1271,7 @@ const styles = StyleSheet.create({
   compactStatus: { maxWidth: "100%", textAlign: "left" },
   cardStatus: { maxWidth: "55%", textAlign: "right" },
   submissionStatus: { alignSelf: "flex-end", textAlign: "right" },
-  content: { padding: SPACING.md, gap: SPACING.md, paddingBottom: SPACING.xxl },
+  content: { padding: 0, gap: SPACING.md, paddingBottom: SPACING.xxl },
   card: { ...CARD, borderRadius: 12, gap: SPACING.md },
   metadata: { gap: SPACING.sm },
   title: {
@@ -1073,8 +1305,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: SPACING.sm,
   },
-  actions: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm },
-  reviewAction: { flex: 1, minWidth: 120, minHeight: 44 },
+  actions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: SPACING.sm,
+    alignItems: "center",
+  },
+  reviewAction: { flex: 1, minWidth: 0, minHeight: 40 },
+  reviewActionText: { fontSize: 12 },
   empty: {
     color: COLORS.textLight,
     textAlign: "center",
@@ -1130,5 +1368,32 @@ const styles = StyleSheet.create({
     flexBasis: 0,
     minHeight: 48,
     paddingHorizontal: SPACING.sm,
+  },
+
+  detailsContainer: {
+    flex: 1,
+  },
+  fixedFooter: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.white,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  paginationButton: {
+    minHeight: 28,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 5,
+  },
+
+  paginationButtonText: {
+    fontSize: 11,
+    lineHeight: 15,
   },
 });

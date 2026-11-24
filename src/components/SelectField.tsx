@@ -4,6 +4,7 @@ export interface SelectOption {
   value: string;
   label: string;
 }
+
 export default function SelectField({
   label,
   value,
@@ -11,7 +12,7 @@ export default function SelectField({
   onChange,
   disabled,
   disabledReason,
-  placeholder = "Select",
+  placeholder,
 }: {
   label: string;
   value: string;
@@ -32,7 +33,7 @@ export default function SelectField({
       onChange={(values) => onChange(values[0] ?? "")}
       disabled={disabled}
       disabledReason={disabledReason}
-      placeholder={placeholder}
+      placeholder={placeholder ?? label?.trim() ?? "Select"}
     />
   );
 }

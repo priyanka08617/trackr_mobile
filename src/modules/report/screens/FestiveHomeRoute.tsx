@@ -106,7 +106,7 @@ export default function FestiveHomeRoute() {
         setReport(undefined);
         setError(undefined);
       } else if (router.canGoBack()) router.back();
-      else router.replace("/area_manager/all_register");
+      else router.replace("/common/home");
     };
     if (backHandlerRef) backHandlerRef.current = goBack;
     setBackVisible(true);
@@ -361,8 +361,17 @@ export default function FestiveHomeRoute() {
               </>
             ) : (
               <>
-                <Text style={styles.title}>{text(checklist?.name)} Report</Text>
-                <Text style={styles.detail}>Set: {checklist?.set_no}</Text>
+                {/* <Text style={styles.title}>{text(checklist?.name)} Report</Text>
+                <Text style={styles.detail}>Set: {checklist?.set_no}</Text> */}
+
+                <View style={styles.titleRow}>
+                  <Text style={styles.title}>
+                    {text(checklist?.name)} Report
+                  </Text>
+                  <Text style={styles.detail}>Set: {checklist?.set_no}</Text>
+                </View>
+                <View style={styles.hr} />
+
                 <View style={styles.filterRow}>
                   <View style={styles.filterCell}>
                     <DateField
@@ -395,7 +404,8 @@ export default function FestiveHomeRoute() {
                 <View style={styles.filterRow}>
                   <View style={styles.filterCell}>
                     <SelectField
-                      label="Zone"
+                      label=""
+                      placeholder="Select Zone"
                       value={filters.zone}
                       options={[
                         { value: "", label: "All" },
@@ -414,7 +424,8 @@ export default function FestiveHomeRoute() {
                   </View>
                   <View style={styles.filterCell}>
                     <SelectField
-                      label="Region"
+                      label=""
+                      placeholder="Select Region"
                       value={filters.region}
                       options={[
                         { value: "", label: "All" },
@@ -434,7 +445,8 @@ export default function FestiveHomeRoute() {
                 <View style={styles.filterRow}>
                   <View style={styles.filterCell}>
                     <SelectField
-                      label="Store"
+                      label=""
+                      placeholder="Select Store"
                       value={filters.store}
                       options={[
                         { value: "", label: "All" },
@@ -454,13 +466,6 @@ export default function FestiveHomeRoute() {
                 <View style={styles.filterRow}>
                   <View style={styles.filterCell}>
                     <AppButton
-                      title="Apply filters"
-                      onPress={() => void loadReport()}
-                      disabled={loading || exporting}
-                    />
-                  </View>
-                  <View style={styles.filterCell}>
-                    <AppButton
                       title="Export CSV"
                       variant="outline"
                       onPress={() => void exportCsv()}
@@ -468,8 +473,16 @@ export default function FestiveHomeRoute() {
                       disabled={loading}
                     />
                   </View>
+
+                  <View style={styles.filterCell}>
+                    <AppButton
+                      title="Apply filters"
+                      onPress={() => void loadReport()}
+                      disabled={loading || exporting}
+                    />
+                  </View>
                 </View>
-                <Text style={styles.detail}>{report?.total ?? 0} records</Text>
+                {/* <Text style={styles.detail}>{report?.total ?? 0} records</Text> */}
               </>
             )}
             {loading && <ActivityIndicator color={COLORS.primary} />}
@@ -512,7 +525,7 @@ const styles = StyleSheet.create({
   approvedText: { color: "#186B32" },
   rejectedText: { color: "#A6212E" },
   screen: { flex: 1, backgroundColor: COLORS.surface },
-  content: { padding: SPACING.lg, gap: SPACING.lg, paddingBottom: SPACING.xxl },
+  content: { padding: 7, gap: SPACING.lg, paddingBottom: SPACING.xxl },
   form: { gap: SPACING.md },
   filterRow: {
     flexDirection: "row",
@@ -521,7 +534,12 @@ const styles = StyleSheet.create({
   },
   filterCell: { flex: 1, minWidth: 0 },
   tableSection: { gap: SPACING.sm },
-  table: { height: 500, borderWidth: 1, borderColor: COLORS.border },
+  table: {
+    height: 500,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 2,
+  },
 
   title: { color: COLORS.text, fontSize: FONT_SIZE.md, fontWeight: "700" },
   detail: { color: COLORS.textLight, fontSize: FONT_SIZE.sm, lineHeight: 21 },
@@ -531,5 +549,19 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.border,
     paddingTop: SPACING.sm,
     gap: SPACING.xs,
+  },
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+    gap: 8,
+  },
+  hr: {
+    height: 1,
+    backgroundColor: "#D1D5DB",
+    width: "100%",
+    // marginTop: 4,
+    // marginBottom: 8,
   },
 });

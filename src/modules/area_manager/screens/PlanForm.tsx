@@ -1,10 +1,11 @@
 import { AppButton } from "@/components/AppButton";
 import { AppLoader } from "@/components/AppLoader";
+import AreaIcon from "@/components/AreaIcon";
 import DateField from "@/components/DateField";
 import SearchSelect from "@/components/SearchSelect";
 import { CARD, COLORS, SPACING } from "@/constants/theme";
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   planRequest,
   today,
@@ -184,96 +185,145 @@ export default function PlanForm({
   );
   return (
     <View style={styles.container}>
-      {(actual || plan) && (
-        <Text style={styles.heading}>
-          {actual ? "Update Actual Visit" : "Edit Work Plan Travel Plan"}
-        </Text>
-      )}
-      {!actual && (
-        <View style={styles.card}>
-          <View style={styles.filterRow}>
-            <View style={styles.filterColumn}>
-              <SearchSelect
-                label="Zone"
-                value={[zone]}
-                options={[
-                  { value: "", label: "All" },
-                  ...options.zones.map((value) => ({ value, label: value })),
-                ]}
-                disabled={busy || optionsBusy}
-                onChange={(value) => changeFilter(value[0] ?? "", true)}
-              />
+      <ScrollView
+        style={styles.formScroll}
+        contentContainerStyle={styles.formContent}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
+        showsVerticalScrollIndicator={true}
+      >
+        {(actual || plan) && (
+          <Text style={styles.heading}>
+            {actual ? "Update Actual Visit" : "Edit Work Plan Travel Plan"}
+          </Text>
+        )}
+        {!actual && (
+          <View style={styles.card}>
+            <View style={styles.filterRow}>
+              <View style={styles.filterColumn}>
+                <SearchSelect
+                  label=""
+                  value={[zone]}
+                  options={[
+                    { value: "", label: "All Zone" },
+                    ...options.zones.map((value) => ({ value, label: value })),
+                  ]}
+                  disabled={busy || optionsBusy}
+                  onChange={(value) => changeFilter(value[0] ?? "", true)}
+                />
+              </View>
+              <View style={styles.filterColumn}>
+                <SearchSelect
+                  label=""
+                  value={[region]}
+                  options={[
+                    { value: "", label: "All Region" },
+                    ...options.regions.map((value) => ({
+                      value,
+                      label: value,
+                    })),
+                  ]}
+                  disabled={busy || optionsBusy || !zone}
+                  onChange={(value) => changeFilter(value[0] ?? "", false)}
+                />
+              </View>
             </View>
-            <View style={styles.filterColumn}>
-              <SearchSelect
-                label="Region"
-                value={[region]}
-                options={[
-                  { value: "", label: "All" },
-                  ...options.regions.map((value) => ({ value, label: value })),
-                ]}
-                disabled={busy || optionsBusy || !zone}
-                onChange={(value) => changeFilter(value[0] ?? "", false)}
+            <Text style={styles.hint}>
+              Changing Zone or Region clears selected visit locations.
+            </Text>
+          </View>
+        )}
+        {optionsBusy && <AppLoader message="Loading visit locations…" />}
+        {optionsError && (
+          <View style={styles.container}>
+            <Text accessibilityRole="alert" style={styles.error}>
+              {optionsError}
+            </Text>
+            <AppButton
+              title="Retry locations"
+              onPress={() => {
+                setOptionsBusy(true);
+                setRetry((value) => value + 1);
+              }}
+            />
+          </View>
+        )}
+        {rows.map((row, index) => (
+          <View key={row.key} style={styles.card}>
+            <View style={styles.visitHeader}>
+              <Text style={styles.heading}>Visit {index + 1}</Text>
+
+              {!plan && rows.length > 1 && (
+                <Pressable
+                  style={styles.removeIcon}
+                  disabled={busy}
+                  onPress={() => {
+                    setRows((current) =>
+                      current.filter((item) => item.key !== row.key),
+                    );
+                    setDirty(true);
+                  }}
+                >
+                  <AreaIcon name="close" size={18} color={COLORS.danger} />
+                </Pressable>
+              )}
+            </View>
+
+            <View style={styles.hr} />
+
+            <DateField
+              label={actual ? "Actual Visit Date" : "WPTP Date"}
+              value={row.date}
+              disabled={busy}
+              minDate={actual ? today() : undefined}
+              onChange={(date) => update(row.key, { date })}
+            />
+            <View style={{ paddingBottom: 30 }}>
+              <LocationPicker
+                value={row.locations}
+                options={options.options}
+                disabled={busy || optionsBusy || Boolean(optionsError)}
+                onChange={(locations) => update(row.key, { locations })}
               />
             </View>
           </View>
-          <Text style={styles.hint}>
-            Changing Zone or Region clears selected visit locations.
-          </Text>
-        </View>
-      )}
-      {optionsBusy && <AppLoader message="Loading visit locations…" />}
-      {optionsError && (
-        <View style={styles.container}>
+        ))}
+        {error && (
           <Text accessibilityRole="alert" style={styles.error}>
-            {optionsError}
+            {error}
           </Text>
+        )}
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <AppButton
+          title={plan ? "Update" : "Submit Plan"}
+          style={styles.submitButton}
+          textStyle={styles.smallButtonText}
+          disabled={busy || optionsBusy || Boolean(optionsError)}
+          onPress={requestSave}
+        />
+
+        {!plan && (
           <AppButton
-            title="Retry locations"
+            title="+ Add Visit"
+            variant="outline"
+            style={styles.addVisitButton}
+            textStyle={styles.smallButtonText}
+            disabled={busy}
             onPress={() => {
-              setOptionsBusy(true);
-              setRetry((value) => value + 1);
+              const key = nextKey.current++;
+              setRows((current) => [
+                ...current,
+                { key, date: today(), locations: [] },
+              ]);
+              setDirty(true);
             }}
           />
-        </View>
-      )}
-      {rows.map((row, index) => (
-        <View key={row.key} style={styles.card}>
-          <Text style={styles.heading}>Visit {index + 1}</Text>
-          <DateField
-            label={actual ? "Actual Visit Date" : "WPTP Date"}
-            value={row.date}
-            disabled={busy}
-            minDate={actual ? today() : undefined}
-            onChange={(date) => update(row.key, { date })}
-          />
-          <LocationPicker
-            value={row.locations}
-            options={options.options}
-            disabled={busy || optionsBusy || Boolean(optionsError)}
-            onChange={(locations) => update(row.key, { locations })}
-          />
-          {!plan && rows.length > 1 && (
-            <AppButton
-              title="Remove Visit"
-              variant="outline"
-              disabled={busy}
-              onPress={() => {
-                setRows((current) =>
-                  current.filter((item) => item.key !== row.key),
-                );
-                setDirty(true);
-              }}
-            />
-          )}
-        </View>
-      ))}
-      {error && (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {error}
-        </Text>
-      )}
-      <View style={styles.actions}>
+        )}
+      </View>
+
+      {/* <View style={styles.footer}>
         <AppButton
           title={plan ? "Update" : "Submit Plan"}
           style={styles.submitButton}
@@ -297,7 +347,8 @@ export default function PlanForm({
             }}
           />
         )}
-      </View>
+      </View> */}
+
       <ChecklistDialog
         visible={confirm || Boolean(notice)}
         busy={busy}
@@ -327,8 +378,53 @@ export default function PlanForm({
   );
 }
 const styles = StyleSheet.create({
-  container: { gap: SPACING.lg },
-  filterRow: { flexDirection: "row", gap: SPACING.md },
+  container: {
+    flex: 1,
+    minHeight: 0,
+  },
+
+  formScroll: {
+    flex: 1,
+  },
+
+  formContent: {
+    gap: SPACING.md,
+    padding: 4,
+    paddingBottom: 15,
+  },
+
+  footer: {
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.white,
+  },
+
+  submitButton: {
+    flex: 3,
+    minWidth: 0,
+    minHeight: 32,
+    paddingVertical: 2,
+  },
+
+  addVisitButton: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 32,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+  },
+
+  smallButtonText: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+
+  // container: { gap: 3 },
+  filterRow: { flexDirection: "row", gap: 5 },
   filterColumn: { flex: 1, minWidth: 0 },
   card: {
     // =========================
@@ -338,11 +434,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  heading: { color: COLORS.primary, fontSize: 18, fontWeight: "600" },
+  heading: { color: COLORS.primary, fontSize: 16, fontWeight: "600" },
   actions: { flexDirection: "row", gap: SPACING.sm },
-  submitButton: { flex: 3, minWidth: 0 },
-  addVisitButton: { flex: 1, minWidth: 0, paddingHorizontal: SPACING.xs },
+  // submitButton: { flex: 3, minWidth: 0 },
+  // addVisitButton: { flex: 1, minWidth: 0, paddingHorizontal: SPACING.xs },
   addVisitText: { textAlign: "center" },
   hint: { color: COLORS.textLight, fontSize: 12 },
   error: { color: COLORS.danger },
+
+  visitHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  hr: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    // marginVertical: 1,
+  },
+  removeIcon: {
+    width: 25,
+    height: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.danger,
+  },
 });
