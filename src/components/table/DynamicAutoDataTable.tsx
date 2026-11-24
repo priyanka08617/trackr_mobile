@@ -195,7 +195,7 @@ export default function DynamicDataTable({
         title: column.title,
         dataIndex: column.dataIndex,
 
-        minWidth: column.minWidth ?? 40,
+        minWidth: column.minWidth ?? 80,
         width: column.width,
         fixed: column.fixed,
         align: column.align ?? "left",
@@ -204,7 +204,11 @@ export default function DynamicDataTable({
 
         renderHeader: () => (
           <Text
-            style={[styles.headerText, compact && styles.compactHeaderText]}
+            numberOfLines={1}
+            style={[
+              styles.headerText,
+              compact && styles.compactHeaderText,
+            ]}
           >
             {column.title}
           </Text>
@@ -268,14 +272,20 @@ export default function DynamicDataTable({
         stickyHeader
         striped
         stripeColors={[COLORS.white, COLORS.surface]}
-        headerStyle={[styles.header, compact && styles.compactHeader]}
+        headerStyle={[
+          styles.header,
+          compact && styles.compactHeader,
+        ]}
         headerTextStyle={[
           styles.headerText,
           compact && styles.compactHeaderText,
         ]}
         rowStyle={compact ? styles.compactRow : undefined}
         cellStyle={compact ? styles.compactCell : undefined}
-        cellTextStyle={[styles.cellText, compact && styles.compactCellText]}
+        cellTextStyle={[
+          styles.cellText,
+          compact && styles.compactCellText,
+        ]}
         refreshing={Boolean(onRefresh) && loading}
         onRefresh={onRefresh}
         ListEmptyComponent={
@@ -287,7 +297,10 @@ export default function DynamicDataTable({
               ]}
             >
               <Text
-                style={[styles.emptyText, compact && styles.compactCellText]}
+                style={[
+                  styles.emptyText,
+                  compact && styles.compactCellText,
+                ]}
               >
                 {emptyMessage}
               </Text>
@@ -372,8 +385,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     textAlign: "center",
-    flexShrink: 1,
-    flexWrap: "wrap",
+    flexShrink: 0,
   },
   compactHeaderText: {
     fontSize: 11,

@@ -182,6 +182,7 @@ function TrackerTable({
         showSearch={false}
         showColumnFilter={false}
         showPageSize={false}
+        loading={loading}
       />
       {loading && (
         <View style={styles.tableLoadingOverlay}>
@@ -493,7 +494,7 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
             selected start date are visible in the table.
           </Text>
         )}
-        {!visibleError && (loading || rows.length > 0) && (
+        {!visibleError && rows.length > 0 && (
           <TrackerTable
             apiColumns={apiColumns}
             trackerId={tracker.id}

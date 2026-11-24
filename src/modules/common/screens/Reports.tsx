@@ -1,8 +1,13 @@
 import ActionRow from "@/components/ActionRow";
 import { AppButton } from "@/components/AppButton";
+import {
+  AreaHeaderBackContext,
+  AreaHeaderBackVisibleContext,
+} from "@/components/AreaHeaderBackContext";
 import AreaPage from "@/components/AreaPage";
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
-import { useState } from "react";
+import { router } from "expo-router";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { Modal, ScrollView, StyleSheet, Text, View } from "react-native";
 import DateField from "../../../components/DateField";
 import { today } from "../../report/services/service";
@@ -41,6 +46,12 @@ export default function Reports({
 }: {
   onDownload: (report: string, start: string, end: string) => Promise<void>;
 }) {
+  const backHandlerRef = useContext(AreaHeaderBackContext);
+  const setBackVisible = useContext(AreaHeaderBackVisibleContext);
+  const goToDashboard = useCallback(
+    () => router.replace("/area_manager/dashboard"),
+    [],
+  );
   const [selected, setSelected] = useState<(typeof REPORTS)[number] | null>(
     null,
   );
@@ -48,6 +59,16 @@ export default function Reports({
   const [end, setEnd] = useState("");
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (backHandlerRef) backHandlerRef.current = goToDashboard;
+    setBackVisible(true);
+    return () => {
+      if (backHandlerRef?.current === goToDashboard)
+        backHandlerRef.current = null;
+      setBackVisible(false);
+    };
+  }, [backHandlerRef, goToDashboard, setBackVisible]);
 
   async function download() {
     if (!selected || busy) return;

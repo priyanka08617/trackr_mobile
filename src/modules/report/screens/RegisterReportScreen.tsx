@@ -343,7 +343,7 @@ function ReportTable({
       ...columns.map((column) => ({
         title: column.title,
         dataIndex: column.data,
-        minWidth: 50,
+        width: Math.max(88, column.title.length * 8 + 24),
         searchable: true,
       })),
     ],
@@ -798,14 +798,7 @@ export default function RegisterReportScreen({
           {visibleError}
         </Text>
       )}
-      {!visibleError && rows.length === 0 && (
-        <Text style={styles.empty}>
-          {loading
-            ? "Loading report data…"
-            : "No report rows match these filters."}
-        </Text>
-      )}
-      {!visibleError && rows.length > 0 && (
+      {!visibleError && (
         <ReportTable
           reportId={reportId}
           rows={rows}

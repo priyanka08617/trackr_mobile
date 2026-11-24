@@ -605,7 +605,7 @@ export default function FasciaPlanScreen() {
   );
 }
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.surface },
+  screen: { flex: 1, backgroundColor: COLORS.surface,paddingLeft:1,paddingRight:1},
   card: {
     backgroundColor: COLORS.white,
     borderRadius: 12,
