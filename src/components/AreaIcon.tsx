@@ -47,6 +47,19 @@ const ICONS = {
   cut: { ios: "scissors", fa: "cut" },
   shoePrints: { ios: "shoeprints.fill", fa: "shoe-prints" },
   profile: { ios: "person.circle", fa: "user-circle" },
+  deleteDraft: { ios: "trash.fill", fa: "trash-alt" },
+  walking: { ios: "figure.walk", fa: "walking" },
+  exchange: { ios: "arrow.left.arrow.right", fa: "exchange-alt" },
+  gasPump: { ios: "fuelpump.fill", fa: "gas-pump" },
+  bolt: { ios: "bolt.fill", fa: "bolt" },
+  key: { ios: "key.fill", fa: "key" },
+  userCheck: { ios: "person.crop.circle.badge.checkmark", fa: "user-check" },
+  userFriends: { ios: "person.2.fill", fa: "user-friends" },
+  recycle: { ios: "arrow.3.trianglepath", fa: "recycle" },
+  receipt: { ios: "receipt.fill", fa: "receipt" },
+  locationPin: { ios: "mappin.and.ellipse", fa: "map-marker-alt" },
+  search: { ios: "magnifyingglass", fa: "search" },
+  calculator: { ios: "plus.forwardslash.minus", fa: "calculator" },
 } satisfies Record<string, { ios: SymbolViewProps["name"]; fa: string }>;
 
 export type AreaIconName = keyof typeof ICONS;

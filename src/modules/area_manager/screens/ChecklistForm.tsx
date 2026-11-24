@@ -2,44 +2,46 @@ import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
 import { AppLoader } from "@/components/AppLoader";
 import {
-    CARD,
-    COLORS,
-    FONT_SIZE,
-    FONT_WEIGHT,
-    SPACING,
+  AreaHeaderActionContext,
+  AreaHeaderBackContext,
+  AreaHeaderBackVisibleContext,
+  AreaHeaderTitleContext,
+} from "@/components/AreaHeaderBackContext";
+import AreaIcon from "@/components/AreaIcon";
+import {
+  CARD,
+  COLORS,
+  FONT_SIZE,
+  FONT_WEIGHT,
+  SPACING,
 } from "@/constants/theme";
 import { router } from "expo-router";
 import {
-    memo,
-    useCallback,
-    useContext,
-    useEffect,
-    useRef,
-    useState,
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SelectField from "../../../components/SelectField";
 import {
-    AreaHeaderActionContext,
-    AreaHeaderBackContext,
-    AreaHeaderBackVisibleContext,
-    AreaHeaderTitleContext,
-} from "@/components/AreaHeaderBackContext";
-import {
-    getAnswerError,
-    getScore,
-    todayForChecklist,
-    type RmAnswer,
-    type RmDraft,
-    type RmQuestion,
+  getAnswerError,
+  getScore,
+  todayForChecklist,
+  type RmAnswer,
+  type RmDraft,
+  type RmQuestion,
 } from "../services/model";
 import ChecklistDialog, { type ChecklistNotice } from "./ChecklistDialog";
 import { useRmChecklistData, type RmChecklistData } from "./DataContext";
@@ -235,23 +237,55 @@ function ChecklistFormContent({ data }: { data: RmChecklistData }) {
       setHeaderBackVisible(false);
       setHeaderTitle(null);
     };
-  }, [headerBackHandlerRef, request, busy, setHeaderBackVisible, setHeaderTitle]);
+  }, [
+    headerBackHandlerRef,
+    request,
+    busy,
+    setHeaderBackVisible,
+    setHeaderTitle,
+  ]);
   const hasDraft = Boolean(data.draft || savedAnswers.length > 0);
+  // useEffect(() => {
+  //   setHeaderAction(
+  //     hasDraft ? (
+  //       <AppButton
+  //         title="Delete Draft"
+  //         variant="danger"
+  //         disabled={busy}
+  //         style={{ minHeight: 44, paddingHorizontal: SPACING.sm }}
+  //         onPress={() => request("remove")}
+  //       />
+  //     ) : null,
+  //   );
+  //   return () => setHeaderAction(null);
+  // }, [setHeaderAction, hasDraft, busy, request]);
+
+  // ========================================================================================================
+
   useEffect(() => {
     setHeaderAction(
       hasDraft ? (
-        <AppButton
-          title="Delete Draft"
-          variant="danger"
-          disabled={busy}
-          style={{ minHeight: 44, paddingHorizontal: SPACING.sm }}
+        <Pressable
           onPress={() => request("remove")}
-        />
+          disabled={busy}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Delete Draft"
+          style={{
+            padding: 8,
+            alignItems: "center",
+            justifyContent: "center",
+            opacity: busy ? 0.5 : 1,
+          }}
+        >
+          <AreaIcon name="deleteDraft" size={22} color="#FFFFFF" />
+        </Pressable>
       ) : null,
     );
+
     return () => setHeaderAction(null);
   }, [setHeaderAction, hasDraft, busy, request]);
-
+  // ==========================================================================================================
   async function perform() {
     if (!confirmation || busy) return;
     if (confirmation === "leave") {
@@ -397,7 +431,8 @@ function ChecklistFormContent({ data }: { data: RmChecklistData }) {
               </View>
             </View>
             <SelectField
-              label="Choose category"
+              label=""
+              placeholder="Choose category"
               value={category}
               disabled={busy}
               options={categories.map((value) => ({ value, label: value }))}
@@ -602,7 +637,9 @@ const ChecklistQuestionRow = memo(function ChecklistQuestionRow({
         </Text>
       </View>
       <Text style={styles.parameter}>{question.text}</Text>
-      <SelectField
+
+      {/*============================================================================================= */}
+      {/* <SelectField
         label="Rating"
         presentation="modal"
         disabledReason={
@@ -618,7 +655,33 @@ const ChecklistQuestionRow = memo(function ChecklistQuestionRow({
       />
       {previousRating && (
         <Text style={styles.previous}>Prev: {previousRating}</Text>
-      )}
+      )} */}
+
+      <View>
+        <View style={styles.ratingLabelRow}>
+          <Text style={styles.ratingLabel}>Rating</Text>
+
+          {previousRating && (
+            <Text style={styles.previous}>Prev: {previousRating}</Text>
+          )}
+        </View>
+
+        <SelectField
+          label=""
+          presentation="modal"
+          disabledReason={
+            !storeId ? "Select a store first to choose a rating." : undefined
+          }
+          value={answer?.rating ?? ""}
+          disabled={!storeId || busy}
+          options={question.ratings.map((rating) => ({
+            value: rating.label,
+            label: rating.label,
+          }))}
+          onChange={(rating) => onUpdate(question, { rating })}
+        />
+      </View>
+      {/* =============================================================================================== */}
       <SelectField
         label="Why"
         presentation="modal"
@@ -663,8 +726,8 @@ const ChecklistQuestionRow = memo(function ChecklistQuestionRow({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.surface },
-  content: { padding: 20, gap: SPACING.lg, paddingBottom: SPACING.xxl },
-  card: { ...CARD, borderRadius: 18, gap: SPACING.md },
+  content: { padding: 3, gap: 15, paddingBottom: SPACING.xl },
+  card: { ...CARD, borderRadius: 10, gap: SPACING.md },
   headerGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -672,7 +735,7 @@ const styles = StyleSheet.create({
     rowGap: SPACING.md,
   },
   field: { width: "48%", minWidth: 0 },
-  category: { ...CARD, padding: 0, borderRadius: 18, overflow: "hidden" },
+  category: { ...CARD, padding: 0, borderRadius: 10, overflow: "hidden" },
   categoryButton: {
     backgroundColor: "#6b161d",
     borderColor: "#6b161d",
@@ -680,7 +743,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   question: {
-    padding: SPACING.lg,
+    padding: 7,
     gap: SPACING.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -690,7 +753,7 @@ const styles = StyleSheet.create({
   parameter: {
     color: COLORS.text,
     fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.semibold,
+    // fontWeight: FONT_WEIGHT.semibold,
     lineHeight: 23,
   },
   text: { color: COLORS.text, fontSize: FONT_SIZE.sm, lineHeight: 22 },
@@ -698,7 +761,7 @@ const styles = StyleSheet.create({
   remark: {
     minHeight: 90,
     textAlignVertical: "top",
-    paddingVertical: SPACING.sm,
+    // paddingVertical: SPACING.sm,
   },
   hint: { color: COLORS.textLight, fontSize: FONT_SIZE.xs },
   previous: { color: COLORS.textLight, fontSize: FONT_SIZE.xs },
@@ -733,4 +796,19 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
   },
   dialog: { ...CARD, width: "100%", maxWidth: 440, gap: SPACING.lg },
+
+  ratingLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 4,
+    marginTop: 4,
+  },
+
+  ratingLabel: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.text,
+  },
 });

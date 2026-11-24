@@ -7,10 +7,19 @@ import {
 } from "@/components/AreaHeaderBackContext";
 import AreaIcon from "@/components/AreaIcon";
 import DateField from "@/components/DateField";
+import DynamicDataTable, {
+  type DynamicColumn,
+} from "@/components/table/DynamicAutoDataTable";
 import { CARD, COLORS, SPACING } from "@/constants/theme";
 import { router } from "expo-router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { reportTableValue } from "../../report/services/reportTableFormat";
 import {
@@ -22,10 +31,10 @@ import {
 } from "../../report/services/service";
 import ChecklistDialog, { type ChecklistNotice } from "./ChecklistDialog";
 import PlanForm from "./PlanForm";
-import DataTable, { type WorkPlanColumn } from "./WorkPlanTable";
 
 type Tab = "new" | "unchecked" | "verified";
 export default function WorkPlanScreen() {
+  const { height } = useWindowDimensions();
   const [tab, setTab] = useState<Tab>("new");
   const [editor, setEditor] = useState<{ plan: Plan; actual: boolean }>();
   const [formDirty, setFormDirty] = useState(false);
@@ -54,7 +63,7 @@ export default function WorkPlanScreen() {
   const setHeaderBackVisible = useContext(AreaHeaderBackVisibleContext);
   const setHeaderTitle = useContext(AreaHeaderTitleContext);
   useEffect(() => {
-    setHeaderTitle("Work Plan / Travel Plan");
+    setHeaderTitle("Work Plan/Travel Plan");
     return () => setHeaderTitle(null);
   }, [setHeaderTitle]);
   const leavePage = useCallback(() => {
@@ -207,35 +216,31 @@ export default function WorkPlanScreen() {
       ))}
     </View>
   );
-
   if (editor || tab === "new")
     return (
       <SafeAreaView edges={["left", "right", "bottom"]} style={styles.screen}>
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-        >
-          {!editor && tabs}
-          <PlanForm
-            key={editor ? `${editor.plan.id}-${editor.actual}` : "new"}
-            plan={editor?.plan}
-            actual={editor?.actual}
-            onDirtyChange={setFormDirty}
-            onBusyChange={setFormBusy}
-            onDone={() => {
-              setEditor(undefined);
-              setFormDirty(false);
-              setTab("unchecked");
-              setPage(1);
-              resetDates();
-              reload();
-            }}
-            onCancel={() => {
-              if (editor) setEditor(undefined);
-              else switchTab("unchecked", true);
-            }}
-          />
-        </ScrollView>
+        {!editor && tabs}
+
+        <PlanForm
+          key={editor ? `${editor.plan.id}-${editor.actual}` : "new"}
+          plan={editor?.plan}
+          actual={editor?.actual}
+          onDirtyChange={setFormDirty}
+          onBusyChange={setFormBusy}
+          onDone={() => {
+            setEditor(undefined);
+            setFormDirty(false);
+            setTab("unchecked");
+            setPage(1);
+            resetDates();
+            reload();
+          }}
+          onCancel={() => {
+            if (editor) setEditor(undefined);
+            else switchTab("unchecked", true);
+          }}
+        />
+
         <ChecklistDialog
           visible={pendingBack || Boolean(pendingTab)}
           title="Discard changes?"
@@ -253,26 +258,173 @@ export default function WorkPlanScreen() {
       </SafeAreaView>
     );
 
-  const pages = Math.max(1, Math.ceil(total / 20));
-  const columns: WorkPlanColumn[] = [
-    ...(tab === "unchecked" ? [{ title: "Select", width: 70 }] : []),
-    { title: "#", width: 56 },
-    { title: "Plan Date", width: 140 },
-    { title: "Zone", width: 140 },
-    { title: "Region", width: 140 },
-    // { title: "Area Manager", width: 180 },
-    { title: "Planned Visit Location", width: 240 },
-    { title: "Actual Visit Location", width: 240 },
-    { title: "Actual Visit Date", width: 140 },
-    { title: "Status", width: 120 },
-    ...(tab === "unchecked" ? [{ title: "Actions", width: 210 }] : []),
+  const tableData = records.map((plan, index) => ({
+    id: plan.id,
+    serial: (page - 1) * 20 + index + 1,
+    date: reportTableValue("date", plan.date),
+    zone: plan.zone || "All",
+    region: plan.region || "All",
+    plannedNames: plan.plannedNames || "-",
+    actualNames: plan.actualNames || "-",
+    actualDate: reportTableValue("date", plan.actualDate),
+    status: plan.status === 2 ? "Verified" : "Unchecked",
+  }));
+  const getTablePlan = (id: unknown) =>
+    records.find((plan) => plan.id === String(id));
+  const compactCell = (value: unknown) => (
+    <Text style={styles.tableCellText} numberOfLines={0}>
+      {String(value ?? "-")}
+    </Text>
+  );
+  const tableColumns: DynamicColumn[] = [
+    ...(tab === "unchecked"
+      ? [
+          {
+            title: "Select",
+            dataIndex: "id",
+            width: 52,
+            align: "center" as const,
+            searchable: false,
+            render: (record: Record<string, unknown>) => {
+              const plan = getTablePlan(record.id);
+              if (!plan) return null;
+              const isSelected = selected.includes(plan.id);
+              return (
+                <Pressable
+                  accessibilityRole="checkbox"
+                  accessibilityLabel={`Select plan dated ${plan.date} for verification`}
+                  accessibilityState={{ checked: isSelected, disabled: busy }}
+                  disabled={busy}
+                  hitSlop={{ top: 8, right: 6, bottom: 8, left: 6 }}
+                  onPress={() =>
+                    setSelected((current) =>
+                      current.includes(plan.id)
+                        ? current.filter((id) => id !== plan.id)
+                        : [...current, plan.id],
+                    )
+                  }
+                  style={[
+                    styles.tableCheckButton,
+                    isSelected && styles.checkSelected,
+                  ]}
+                >
+                  <AreaIcon
+                    name="check"
+                    size={15}
+                    color={isSelected ? COLORS.white : COLORS.textLight}
+                  />
+                </Pressable>
+              );
+            },
+          },
+        ]
+      : []),
+    {
+      title: "#",
+      dataIndex: "serial",
+      // width: 48,
+      align: "center",
+      searchable: false,
+      render: (record) => compactCell(record.serial),
+    },
+    {
+      title: "Plan Date",
+      dataIndex: "date",
+      // width: 105,
+      render: (record) => compactCell(record.date),
+    },
+    {
+      title: "Zone",
+      dataIndex: "zone",
+      // width: 90,
+      render: (record) => compactCell(record.zone),
+    },
+    {
+      title: "Region",
+      dataIndex: "region",
+      // width: 100,
+      render: (record) => compactCell(record.region),
+    },
+    {
+      title: "Planned Visit Location",
+      dataIndex: "plannedNames",
+      render: (record) => compactCell(record.plannedNames),
+    },
+    {
+      title: "Actual Visit Location",
+      dataIndex: "actualNames",
+      render: (record) => compactCell(record.actualNames),
+    },
+    {
+      title: "Actual Visit Date",
+      dataIndex: "actualDate",
+      render: (record) => compactCell(record.actualDate),
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      render: (record) => {
+        const plan = getTablePlan(record.id);
+        if (!plan) return compactCell(record.status);
+        return (
+          <Text
+            style={[
+              styles.tableStatus,
+              {
+                color: plan.status === 2 ? COLORS.success : COLORS.primary,
+                backgroundColor: plan.status === 2 ? "#E4F3E8" : "#FFF0B3",
+              },
+            ]}
+          >
+            {record.status === "Verified" ? "Verified" : "Unchecked"}
+          </Text>
+        );
+      },
+    },
+    ...(tab === "unchecked"
+      ? [
+          {
+            title: "Actions",
+            dataIndex: "id",
+            searchable: false,
+            render: (record: Record<string, unknown>) => {
+              const plan = getTablePlan(record.id);
+              if (!plan) return "-";
+              return (
+                <View style={styles.tableRowActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Edit plan dated ${plan.date}`}
+                    accessibilityState={{ disabled: busy }}
+                    disabled={busy}
+                    hitSlop={{ top: 8, right: 2, bottom: 8, left: 2 }}
+                    onPress={() => setEditor({ plan, actual: false })}
+                    style={[styles.tableEditButton, busy && styles.disabled]}
+                  >
+                    <AreaIcon name="edit" size={14} />
+                    <Text style={styles.tableActionText}>Edit</Text>
+                  </Pressable>
+                  <AppButton
+                    title="Update"
+                    accessibilityLabel={`Update actual visit for plan dated ${plan.date}`}
+                    style={styles.tableUpdateButton}
+                    textStyle={styles.tableUpdateButtonText}
+                    disabled={busy}
+                    onPress={() => setEditor({ plan, actual: true })}
+                  />
+                </View>
+              );
+            },
+          },
+        ]
+      : []),
   ];
   return (
     <SafeAreaView edges={["left", "right", "bottom"]} style={styles.screen}>
       <View style={[styles.section, styles.listHeader]}>
         {tabs}
         {tab === "verified" && (
-          <View style={styles.card}>
+          <View style={styles.filterCard}>
             <View style={styles.dateRow}>
               <View style={styles.dateColumn}>
                 <DateField
@@ -295,13 +447,10 @@ export default function WorkPlanScreen() {
             </View>
             <View style={styles.actions}>
               <AppButton
-                title="Apply Filters"
-                onPress={applyFilters}
-                disabled={busy || loading}
-              />
-              <AppButton
                 title="Clear"
                 variant="outline"
+                style={styles.compactHeaderButton}
+                textStyle={styles.compactHeaderButtonText}
                 disabled={busy || loading}
                 onPress={() => {
                   resetDates();
@@ -309,163 +458,107 @@ export default function WorkPlanScreen() {
                   reload();
                 }}
               />
+              <AppButton
+                title="Apply Filters"
+                style={styles.compactHeaderButton}
+                textStyle={styles.compactHeaderButtonText}
+                onPress={applyFilters}
+                disabled={busy || loading}
+              />
             </View>
-        </View>
+          </View>
         )}
         {error && (
           <>
             <Text accessibilityRole="alert" style={styles.error}>
               {error}
             </Text>
-            <AppButton title="Retry" onPress={reload} />
+            <AppButton
+              title="Retry"
+              style={styles.compactHeaderButton}
+              textStyle={styles.compactHeaderButtonText}
+              onPress={reload}
+            />
           </>
         )}
-        {tab === "unchecked" && records.length > 0 && !loading && !error && (
+        {tab === "verified" && (
           <View style={styles.actions}>
-            <AppButton
-              title={
-                selected.length === records.length
-                  ? "Deselect All"
-                  : "Select Page"
-              }
+            {/* <AppButton
+              title="Refresh"
               variant="outline"
-              disabled={busy}
-              onPress={() =>
-                setSelected(
-                  selected.length === records.length
-                    ? []
-                    : records.map((plan) => plan.id),
-                )
-              }
-            />
-            <AppButton
-              title={`Verify Selected (${selected.length})`}
-              disabled={!selected.length || busy}
-              onPress={() => setConfirm(true)}
-            />
+              style={styles.compactHeaderButton}
+              textStyle={styles.compactHeaderButtonText}
+              disabled={busy || loading}
+              onPress={reload}
+            /> */}
           </View>
         )}
-        <Text style={styles.tableHint}>
-          Swipe left or right to view all columns
-        </Text>
+        {tab === "unchecked" && (
+          <View style={styles.actions}>
+            {records.length > 0 && !loading && !error && (
+              <>
+                <AppButton
+                  title={
+                    records.length > 0 &&
+                    records.every((plan) => selected.includes(plan.id))
+                      ? "Deselect All"
+                      : "Select Page"
+                  }
+                  variant="outline"
+                  style={styles.compactHeaderButton}
+                  textStyle={styles.compactHeaderButtonText}
+                  disabled={busy || loading}
+                  onPress={() => {
+                    const allSelected = records.every((plan) =>
+                      selected.includes(plan.id),
+                    );
+                    setSelected(
+                      allSelected ? [] : records.map((plan) => plan.id),
+                    );
+                  }}
+                />
+                <AppButton
+                  title={`Verify Selected (${selected.length})`}
+                  style={styles.compactHeaderButton}
+                  textStyle={styles.compactHeaderButtonText}
+                  disabled={!selected.length || busy}
+                  onPress={() => setConfirm(true)}
+                />
+              </>
+            )}
+            {/* <AppButton
+              title="Refresh"
+              variant="outline"
+              style={styles.compactHeaderButton}
+              textStyle={styles.compactHeaderButtonText}
+              disabled={busy || loading}
+              onPress={reload}
+            /> */}
+          </View>
+        )}
       </View>
       {loading && <AppLoader message="Loading work plans..." />}
       <View style={styles.tableContainer}>
-        <DataTable
-          key={`${tab}-${page}`}
-          columns={columns}
-          rows={loading || error ? [] : records}
-          extraData={{ selected, busy }}
-          refreshing={loading}
-          onRefresh={() => {
-            if (!loading && !busy) reload();
+        <DynamicDataTable
+          columns={tableColumns}
+          data={loading || error ? [] : tableData}
+          // height={Math.max(240, Math.min(560, height - 250))}
+          height={Math.max(180, height - (tab === "verified" ? 350 : 250))}
+          refreshKey={`${tab}-${page}-${refresh}`}
+          showPagination
+          serverSidePagination
+          currentPage={page}
+          totalRecords={total}
+          pageSize={20}
+          loading={loading}
+          emptyMessage={loading || error ? "" : `No ${tab} plans found.`}
+          onPageChange={(nextPage) => {
+            if (nextPage === page || loading || busy) return;
+            setPage(nextPage);
+            setSelected([]);
+            setLoading(true);
           }}
-          empty={loading || error ? "" : `No ${tab} plans found.`}
-          renderCells={(item, index) => [
-            ...(tab === "unchecked"
-              ? [
-                  <Pressable
-                    key="select"
-                    accessibilityRole="checkbox"
-                    accessibilityLabel={`Select plan dated ${item.date} for verification`}
-                    accessibilityState={{
-                      checked: selected.includes(item.id),
-                      disabled: busy,
-                    }}
-                    disabled={busy}
-                    onPress={() =>
-                      setSelected((current) =>
-                        current.includes(item.id)
-                          ? current.filter((id) => id !== item.id)
-                          : [...current, item.id],
-                      )
-                    }
-                    style={[
-                      styles.checkButton,
-                      selected.includes(item.id) && styles.checkSelected,
-                    ]}
-                  >
-                    <AreaIcon
-                      name="check"
-                      size={24}
-                      color={
-                        selected.includes(item.id)
-                          ? COLORS.white
-                          : COLORS.textLight
-                      }
-                    />
-                  </Pressable>,
-                ]
-              : []),
-            String((page - 1) * 20 + index + 1),
-            reportTableValue("date", item.date),
-            item.zone || "All",
-            item.region || "All",
-            // item.manager || "-",
-            item.plannedNames || "-",
-            item.actualNames || "-",
-            reportTableValue("date", item.actualDate),
-            <Text
-              key="status"
-              style={[
-                styles.text,
-                { color: item.status === 2 ? COLORS.success : COLORS.primary },
-              ]}
-            >
-              {item.status === 2 ? "Verified" : "Unchecked"}
-            </Text>,
-            ...(tab === "unchecked"
-              ? [
-                  <View key="actions" style={styles.rowActions}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Edit plan dated ${item.date}`}
-                      disabled={busy}
-                      onPress={() => setEditor({ plan: item, actual: false })}
-                      style={[styles.editButton, busy && styles.disabled]}
-                    >
-                      <AreaIcon name="edit" size={18} />
-                      <Text style={styles.editText}>Edit</Text>
-                    </Pressable>
-                    <AppButton
-                      title="Update"
-                      accessibilityLabel={`Update actual visit for plan dated ${item.date}`}
-                      style={styles.updateButton}
-                      disabled={busy}
-                      onPress={() => setEditor({ plan: item, actual: true })}
-                    />
-                  </View>,
-                ]
-              : []),
-          ]}
         />
-      </View>
-      <View style={[styles.section, styles.listFooter]}>
-        <Text style={styles.text}>
-          Page {page} of {pages} | {total} records
-        </Text>
-        <View style={styles.actions}>
-          <AppButton
-            title="Previous"
-            variant="outline"
-            disabled={page <= 1 || loading || busy}
-            onPress={() => {
-              setPage((value) => value - 1);
-              setSelected([]);
-              setLoading(true);
-            }}
-          />
-          <AppButton
-            title="Next"
-            variant="outline"
-            disabled={page >= pages || loading || busy}
-            onPress={() => {
-              setPage((value) => value + 1);
-              setSelected([]);
-              setLoading(true);
-            }}
-          />
-          </View>
       </View>
       <ChecklistDialog
         visible={confirm || Boolean(notice)}
@@ -484,20 +577,16 @@ export default function WorkPlanScreen() {
   );
 }
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.surface },
-  content: { padding: 20, gap: SPACING.lg, paddingBottom: SPACING.xxl },
-  listHeader: { padding: SPACING.md },
-  listFooter: { padding: SPACING.md },
-  tableHint: { color: COLORS.textLight, fontSize: 12 },
+  screen: { minHeight: 0, flex: 1, backgroundColor: COLORS.surface },
+  listHeader: { padding: 0 },
   tableContainer: {
     flex: 1,
-    marginHorizontal: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    overflow: "hidden",
+    width: "100%",
+    minHeight: 0,
+    // overflow: "hidden",
   },
-  section: { gap: SPACING.md },
+  // gap: SPACING.md
+  section: { gap: SPACING.sm },
   tabs: {
     flexDirection: "row",
     borderBottomWidth: 1,
@@ -505,8 +594,8 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    minHeight: 48,
-    paddingVertical: 12,
+    minHeight: 36,
+    paddingVertical: 6,
     paddingHorizontal: 4,
     alignItems: "center",
     justifyContent: "center",
@@ -516,18 +605,33 @@ const styles = StyleSheet.create({
   activeTab: { borderBottomColor: COLORS.primary, backgroundColor: "#f5e9ea" },
   tabLabel: { fontSize: 14, color: COLORS.textLight, textAlign: "center" },
   activeTabLabel: { color: COLORS.primary, fontWeight: "700" },
-  card: {
+  filterCard: {
     ...CARD,
-    gap: SPACING.md,
-    borderRadius: 12,
+    gap: 6,
+    padding: 8,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.border,
+    margin: 5,
+    marginTop: -3,
   },
   heading: { fontSize: 18, color: COLORS.primary, fontWeight: "600" },
   text: { color: COLORS.text, lineHeight: 22 },
   error: { color: COLORS.danger },
   empty: { color: COLORS.textLight, padding: 24, textAlign: "center" },
-  actions: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm },
+  actions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: SPACING.sm,
+    margin: 5,
+  },
+  compactHeaderButton: {
+    minHeight: 30,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    flexGrow: 0,
+  },
+  compactHeaderButtonText: { fontSize: 11, lineHeight: 15 },
   dateRow: { flexDirection: "row", gap: SPACING.sm },
   dateColumn: { flex: 1, minWidth: 0 },
   cardHeader: {
@@ -550,6 +654,70 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
+  tableCheckButton: {
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 6,
+    marginVertical: -5,
+  },
+  tableCellText: {
+    // color: COLORS.text,
+    // fontSize: 11,
+    // lineHeight: 15,
+    // includeFontPadding: false,
+    // marginVertical: -5,
+
+    color: COLORS.text,
+    fontSize: 11,
+    lineHeight: 15,
+    flexShrink: 1,
+    flexWrap: "wrap",
+    includeFontPadding: false,
+    marginVertical: 0,
+  },
+  tableStatus: {
+    alignSelf: "flex-start",
+    overflow: "hidden",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 12,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: "600",
+    includeFontPadding: false,
+    marginVertical: -5,
+  },
+  tableRowActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginVertical: -5,
+  },
+  tableEditButton: {
+    minHeight: 27,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    paddingHorizontal: 5,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: 6,
+  },
+  tableActionText: {
+    color: COLORS.primary,
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  tableUpdateButton: {
+    minHeight: 27,
+    paddingHorizontal: 6,
+  },
+  tableUpdateButtonText: { fontSize: 10 },
   selectedCard: { borderColor: COLORS.primary },
   verifiedIcon: {
     width: 44,
