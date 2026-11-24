@@ -127,11 +127,15 @@ export default function LoginScreen() {
     }
   };
 
+  // const handleForgotPassword = () => {
+  //   Alert.alert(
+  //     "Forgot password?",
+  //     "Please contact your company administrator to reset your password.",
+  //   );
+  // };
+
   const handleForgotPassword = () => {
-    Alert.alert(
-      "Forgot password?",
-      "Please contact your company administrator to reset your password.",
-    );
+    router.push("/forgot_password");
   };
 
   const handleChangeCompany = async () => {
