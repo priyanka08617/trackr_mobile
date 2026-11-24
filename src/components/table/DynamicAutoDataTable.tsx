@@ -195,7 +195,7 @@ export default function DynamicDataTable({
         title: column.title,
         dataIndex: column.dataIndex,
 
-        minWidth: column.minWidth ?? 40,
+        minWidth: column.minWidth ?? 80,
         width: column.width,
         fixed: column.fixed,
         align: column.align ?? "left",
@@ -204,6 +204,7 @@ export default function DynamicDataTable({
 
         renderHeader: () => (
           <Text
+            numberOfLines={1}
             style={[
               styles.headerText,
               compact && styles.compactHeaderText,
@@ -384,8 +385,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     textAlign: "center",
-    flexShrink: 1,
-    flexWrap: "wrap",
+    flexShrink: 0,
   },
   compactHeaderText: {
     fontSize: 11,

@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import {
+  BackHandler,
   Modal,
   Pressable,
   ScrollView,
@@ -111,7 +112,6 @@ export default function FestiveChecklist({
     message: string;
   } | null>(null);
   const [search, setSearch] = useState("");
-  const [listRevision, setListRevision] = useState(0);
   const [returnedPendingSubmission, setReturnedPendingSubmission] =
     useState<FestiveSubmission | null>(null);
   const submissionsSnapshot = useRef<FestiveSubmission[]>(submissions);
@@ -153,12 +153,24 @@ export default function FestiveChecklist({
       setConfirmation(null);
       setNotice(null);
       setPage(1);
-      setListRevision((revision) => revision + 1);
       if (returningSubmission?.status !== 1) void onRefresh?.();
       return;
     }
     onBackPress?.();
   }, [loadedDetail, onBackPress, onRefresh, saving, selectedId, submissions]);
+  useEffect(() => {
+    if (!selectedId) return;
+
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        goBack();
+        return true;
+      },
+    );
+
+    return () => subscription.remove();
+  }, [goBack, selectedId]);
   useEffect(() => {
     if (!embedded) return;
     if (headerBackRef) headerBackRef.current = goBack;
@@ -199,9 +211,7 @@ export default function FestiveChecklist({
   }, [selected?.questions]);
   const visibleSubmissions = useMemo(() => {
     const baseSubmissions =
-      returnedPendingSubmission && submissions.length === 0
-        ? submissionsSnapshot.current
-        : submissions;
+      submissions.length > 0 ? submissions : submissionsSnapshot.current;
     if (
       !returnedPendingSubmission ||
       baseSubmissions.some((item) => item.id === returnedPendingSubmission.id)
@@ -500,7 +510,7 @@ export default function FestiveChecklist({
         if (!item) return compactCell("-");
         return (
           <AppButton
-            title="View"
+            title="view"
             variant="secondary"
             disabled={saving}
             style={styles.viewButton}
@@ -515,7 +525,7 @@ export default function FestiveChecklist({
     {
       title: "Actions",
       dataIndex: "id",
-      // width: 200,
+      width: 150,
       searchable: false,
       render: (record) => {
         const item = findTableSubmission(record.id);
@@ -895,11 +905,10 @@ export default function FestiveChecklist({
           </View>
           <View style={styles.tableContainer}>
             <DynamicDataTable
-              key={`${currentPage}-${listRevision}`}
               columns={tableColumns}
               data={tableData}
               // height={Math.max(260, Math.min(520, height * 0.6))}
-              refreshKey={`${currentPage}-${listRevision}`}
+              refreshKey={currentPage}
               emptyMessage={
                 loading
                   ? ""
@@ -1034,7 +1043,7 @@ export default function FestiveChecklist({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.surface },
-  listControls: { padding: 3, gap: SPACING.md },
+  listControls: { padding: 8, gap: SPACING.md },
   tableHelpRow: {
     flexDirection: "row",
     justifyContent: "space-between",

@@ -282,7 +282,7 @@ export default function WorkPlanScreen() {
           {
             title: "Select",
             dataIndex: "id",
-            width: 52,
+            // width: 65,
             align: "center" as const,
             searchable: false,
             render: (record: Record<string, unknown>) => {
@@ -330,7 +330,7 @@ export default function WorkPlanScreen() {
     {
       title: "Plan Date",
       dataIndex: "date",
-      // width: 105,
+      // width: 105, 
       render: (record) => compactCell(record.date),
     },
     {
@@ -577,7 +577,7 @@ export default function WorkPlanScreen() {
   );
 }
 const styles = StyleSheet.create({
-  screen: { minHeight: 0, flex: 1, backgroundColor: COLORS.surface },
+  screen: { minHeight: 0, flex: 1, backgroundColor: COLORS.surface,padding:6 },
   listHeader: { padding: 0 },
   tableContainer: {
     flex: 1,

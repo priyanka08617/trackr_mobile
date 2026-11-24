@@ -68,7 +68,7 @@ const COLUMNS: DynamicColumn[] = [
   {
     dataIndex: "status",
     title: "Status",
-    width: 100,
+    // width: 110,
     align: "center",
     render: (record) => (
       <Text
