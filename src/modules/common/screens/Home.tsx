@@ -60,7 +60,7 @@ const HOME_CARDS = [
   {
     title: "Report Bank",
     icon: "bank" as const,
-    image: require("../../../../assets/images/icons/dashboard/store.svg"),
+    image: require("../../../../assets/images/icons/dashboard/report_bank.svg"),
     href: "/common/Report_bank",
     screen: "report_bank",
   },
@@ -73,7 +73,7 @@ const HOME_CARDS = [
 
   {
     title: "Omni Return Tracker",
-    image: require("../../../../assets/images/icons/dashboard/online_return_trackr.png"),
+    image: require("../../../../assets/images/icons/dashboard/omni_return_tracker.svg"),
     screen: "pending_omni_return_tracker",
   },
 ] as const;
@@ -147,6 +147,7 @@ export default function Home() {
               title={card.title}
               icon="dashboard"
               homeImage={card.image}
+              compactHome={true}
               onPress={() => setActiveScreen(card.screen)}
             />
           </View>
@@ -156,7 +157,12 @@ export default function Home() {
   );
 }
 
+// const styles = StyleSheet.create({
+//   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10, padding: 0 },
+//   cell: { flexGrow: 1, flexBasis: "35%", minWidth: 0 },
+// });
+
 const styles = StyleSheet.create({
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, padding: 6 },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, padding: 0 },
   cell: { flexGrow: 1, flexBasis: "45%", minWidth: 0 },
 });

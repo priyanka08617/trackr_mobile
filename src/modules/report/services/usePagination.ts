@@ -16,11 +16,7 @@ interface UsePaginationOptions<T> {
   ) => Promise<PaginationPage<T>>;
 }
 
-export function usePagination<T>({
-  queryKey,
-  limit,
-  fetchPage,
-}: UsePaginationOptions<T>) {
+export function usePagination<T>({ queryKey, limit, fetchPage }: UsePaginationOptions<T>) {
   const mounted = useRef(false);
   const generation = useRef(0);
   const requestController = useRef<AbortController | null>(null);
@@ -41,51 +37,28 @@ export function usePagination<T>({
     };
   }, []);
 
-  const loadPage = useCallback(
-    async (target: number, reset = false) => {
-      const currentGeneration = generation.current;
-      const requestId = ++navigation.current;
-      requestController.current?.abort();
-      const controller = new AbortController();
-      requestController.current = controller;
-      setLoading(true);
-      setError(undefined);
-      try {
-        const result = await fetchPage(target, limit, controller.signal);
-        if (
-          !mounted.current ||
-          generation.current !== currentGeneration ||
-          navigation.current !== requestId
-        )
-          return;
-        setData(result.data);
-        setTotal(result.total);
-        setPage(target);
-        setMetadata(result.metadata);
-      } catch (cause) {
-        if (
-          !mounted.current ||
-          generation.current !== currentGeneration ||
-          navigation.current !== requestId ||
-          controller.signal.aborted
-        )
-          return;
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "Unable to load report data.",
-        );
-      } finally {
-        if (
-          mounted.current &&
-          generation.current === currentGeneration &&
-          navigation.current === requestId
-        )
-          setLoading(false);
-      }
-    },
-    [fetchPage, limit],
-  );
+  const loadPage = useCallback(async (target: number, reset = false) => {
+    const currentGeneration = generation.current;
+    const requestId = ++navigation.current;
+    requestController.current?.abort();
+    const controller = new AbortController();
+    requestController.current = controller;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const result = await fetchPage(target, limit, controller.signal);
+      if (!mounted.current || generation.current !== currentGeneration || navigation.current !== requestId) return;
+      setData(result.data);
+      setTotal(result.total);
+      setPage(target);
+      setMetadata(result.metadata);
+    } catch (cause) {
+      if (!mounted.current || generation.current !== currentGeneration || navigation.current !== requestId || controller.signal.aborted) return;
+      setError(cause instanceof Error ? cause.message : "Unable to load report data.");
+    } finally {
+      if (mounted.current && generation.current === currentGeneration && navigation.current === requestId) setLoading(false);
+    }
+  }, [fetchPage, limit]);
 
   useEffect(() => {
     generation.current += 1;
@@ -100,19 +73,11 @@ export function usePagination<T>({
     };
   }, [loadPage, queryKey]);
 
-  const goToPage = useCallback(
-    (targetPage: number) => {
-      const lastPage = Math.ceil(total / limit);
-      if (
-        !Number.isInteger(targetPage) ||
-        targetPage < 1 ||
-        targetPage > lastPage
-      )
-        return;
-      void loadPage(targetPage);
-    },
-    [limit, loadPage, total],
-  );
+  const goToPage = useCallback((targetPage: number) => {
+    const lastPage = Math.ceil(total / limit);
+    if (!Number.isInteger(targetPage) || targetPage < 1 || targetPage > lastPage) return;
+    void loadPage(targetPage);
+  }, [limit, loadPage, total]);
 
   return { data, total, page, metadata, loading, error, goToPage };
 }

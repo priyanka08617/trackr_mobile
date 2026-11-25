@@ -1,5 +1,9 @@
 import { fetchWithSession } from "@/services/sessionService";
 import { AppButton } from "@/components/AppButton";
+import {
+  AreaHeaderBackContext,
+  AreaHeaderBackVisibleContext,
+} from "@/components/AreaHeaderBackContext";
 import { AppInput } from "@/components/AppInput";
 import { AppLoader } from "@/components/AppLoader";
 import AreaIcon from "@/components/AreaIcon";
@@ -12,7 +16,8 @@ import {
 } from "@/constants/theme";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
-import { useEffect, useState } from "react";
+import { router } from "expo-router";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
@@ -215,6 +220,12 @@ async function fetchCompanyFaqs(
 // ==============================================
 
 export default function CompanyFaq() {
+  const backHandlerRef = useContext(AreaHeaderBackContext);
+  const setBackVisible = useContext(AreaHeaderBackVisibleContext);
+  const goToDashboard = useCallback(
+    () => router.replace("/area_manager/dashboard"),
+    [],
+  );
   const [faqs, setFaqs] = useState<CompanyFaqItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
@@ -222,6 +233,16 @@ export default function CompanyFaq() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (backHandlerRef) backHandlerRef.current = goToDashboard;
+    setBackVisible(true);
+    return () => {
+      if (backHandlerRef?.current === goToDashboard)
+        backHandlerRef.current = null;
+      setBackVisible(false);
+    };
+  }, [backHandlerRef, goToDashboard, setBackVisible]);
 
   useEffect(() => {
     let active = true;
@@ -438,9 +459,9 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.white },
   safeArea: { flex: 1 },
   content: {
-    padding: 16,
-    gap: SPACING.lg,
-    paddingBottom: SPACING.xxl,
+    padding: SPACING.sm,
+    gap: SPACING.md,
+    paddingBottom: SPACING.lg,
     width: "100%",
     maxWidth: 760,
     alignSelf: "center",
@@ -454,16 +475,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "center",
-    gap: SPACING.sm,
-    paddingVertical: SPACING.sm,
+    gap: SPACING.xs,
+    paddingVertical: SPACING.xs,
   },
   categoryButton: {
-    minHeight: 44,
+    minHeight: 36,
     borderWidth: 1,
     borderColor: COLORS.primary,
     borderRadius: 6,
-    paddingVertical: 9,
-    paddingHorizontal: 15,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.2)",
@@ -489,9 +510,10 @@ const styles = StyleSheet.create({
   questionRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: SPACING.md,
-    padding: SPACING.lg,
-    minHeight: 64,
+    gap: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    minHeight: 48,
   },
   questionIcon: { width: 30, alignItems: "center" },
   question: {

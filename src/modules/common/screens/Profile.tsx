@@ -1,11 +1,16 @@
-import { AreaHeaderTitleContext } from "@/components/AreaHeaderBackContext";
+import {
+  AreaHeaderBackContext,
+  AreaHeaderBackVisibleContext,
+  AreaHeaderTitleContext,
+} from "@/components/AreaHeaderBackContext";
 import AreaPage from "@/components/AreaPage";
 import { COLORS } from "@/constants/theme";
 import { Image } from "expo-image";
+import { router } from "expo-router";
 
 import { getUserProfile, type UserProfile } from "../services/profileService";
 
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 import {
   ActivityIndicator,
@@ -60,6 +65,12 @@ function ProfileField({
 
 export default function Profile() {
   const setHeaderTitle = useContext(AreaHeaderTitleContext);
+  const backHandlerRef = useContext(AreaHeaderBackContext);
+  const setBackVisible = useContext(AreaHeaderBackVisibleContext);
+  const goToDashboard = useCallback(
+    () => router.replace("/area_manager/dashboard"),
+    [],
+  );
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
@@ -76,6 +87,16 @@ export default function Profile() {
 
     return () => setHeaderTitle(null);
   }, [setHeaderTitle]);
+
+  useEffect(() => {
+    if (backHandlerRef) backHandlerRef.current = goToDashboard;
+    setBackVisible(true);
+    return () => {
+      if (backHandlerRef?.current === goToDashboard)
+        backHandlerRef.current = null;
+      setBackVisible(false);
+    };
+  }, [backHandlerRef, goToDashboard, setBackVisible]);
 
   // ==========================================
   // FETCH PROFILE FROM SERVICE
