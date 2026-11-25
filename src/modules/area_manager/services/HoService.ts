@@ -40,6 +40,8 @@ export interface HoDetails {
   details: HoDetail[];
 }
 
+export const HO_CHECKLIST_PAGE_SIZE = 50;
+
 interface ApiEnvelope {
   success: boolean;
   message?: string;
