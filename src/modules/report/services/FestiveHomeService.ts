@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 
@@ -110,7 +111,7 @@ async function request(
     for (let attempt = 0; attempt < 2; attempt++) {
       let response: Response;
       try {
-        response = await fetch(url.toString(), {
+        response = await fetchWithSession(url.toString(), {
           method: "GET",
           cache: "no-store",
           headers: {

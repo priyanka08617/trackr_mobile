@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import type { AreaIconName } from "@/components/AreaIcon";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
@@ -187,7 +188,7 @@ export async function loadTrackerReportPage(
   const url = `${baseUrl}${endpoint.path}${endpoint.method === "GET" ? `?${params.toString()}` : ""}`;
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await fetchWithSession(url, {
       method: endpoint.method,
       signal,
       headers: {
@@ -290,7 +291,7 @@ export async function requestTrackerCsv(
     zone: filters.zone,
     store: filters.store,
   });
-  const response = await fetch(
+  const response = await fetchWithSession(
     `${baseUrl}${endpoint.exportPath}?${query.toString()}`,
     {
       headers: {

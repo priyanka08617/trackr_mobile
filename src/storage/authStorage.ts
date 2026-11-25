@@ -4,48 +4,75 @@ import { Platform } from "react-native";
 
 import { APP_CONFIG } from "@/constants/config";
 
+export interface AuthSession {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+  companyId: string;
+  apiBase: string;
+}
+
+function read(key: string) {
+  return Platform.OS === "web"
+    ? AsyncStorage.getItem(key)
+    : SecureStore.getItemAsync(key);
+}
+
+function remove(key: string) {
+  return Platform.OS === "web"
+    ? AsyncStorage.removeItem(key)
+    : SecureStore.deleteItemAsync(key);
+}
+
+export async function readAuthSession(): Promise<AuthSession | null> {
+  const raw = await read(APP_CONFIG.storageKeys.authSession);
+  if (!raw) return null;
+
+  try {
+    const session: Partial<AuthSession> | null = JSON.parse(raw);
+    if (
+      typeof session?.accessToken !== "string" ||
+      typeof session.refreshToken !== "string" ||
+      typeof session.expiresAt !== "number" ||
+      typeof session.companyId !== "string" ||
+      typeof session.apiBase !== "string" ||
+      !Number.isFinite(session.expiresAt)
+    ) return null;
+
+    return {
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
+      expiresAt: session.expiresAt,
+      companyId: session.companyId,
+      apiBase: session.apiBase,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function getAuthToken(): Promise<string | null> {
-  if (Platform.OS === "web") {
-    return AsyncStorage.getItem(APP_CONFIG.storageKeys.authToken);
-  }
-  return SecureStore.getItemAsync(APP_CONFIG.storageKeys.authToken);
+  return (await readAuthSession())?.accessToken ?? null;
 }
 
-export async function setAuthToken(token: string): Promise<void> {
-  if (Platform.OS === "web") {
-    await AsyncStorage.setItem(APP_CONFIG.storageKeys.authToken, token);
-    return;
-  }
-  await SecureStore.setItemAsync(APP_CONFIG.storageKeys.authToken, token);
+export function saveAuthSession(session: AuthSession): Promise<void> {
+  const key = APP_CONFIG.storageKeys.authSession;
+  const value = JSON.stringify(session);
+  return Platform.OS === "web"
+    ? AsyncStorage.setItem(key, value)
+    : SecureStore.setItemAsync(key, value);
 }
 
-export async function clearAuthToken(): Promise<void> {
-  if (Platform.OS === "web") {
-    await AsyncStorage.removeItem(APP_CONFIG.storageKeys.authToken);
-    return;
-  }
-  await SecureStore.deleteItemAsync(APP_CONFIG.storageKeys.authToken);
+export async function clearAuthSession(): Promise<void> {
+  await Promise.all([
+    remove(APP_CONFIG.storageKeys.authSession),
+    clearLegacyAuthTokens(),
+  ]);
 }
 
-export async function getRefreshToken(): Promise<string | null> {
-  if (Platform.OS === "web") {
-    return AsyncStorage.getItem(APP_CONFIG.storageKeys.refreshToken);
-  }
-  return SecureStore.getItemAsync(APP_CONFIG.storageKeys.refreshToken);
-}
-
-export async function setRefreshToken(token: string): Promise<void> {
-  if (Platform.OS === "web") {
-    await AsyncStorage.setItem(APP_CONFIG.storageKeys.refreshToken, token);
-    return;
-  }
-  await SecureStore.setItemAsync(APP_CONFIG.storageKeys.refreshToken, token);
-}
-
-export async function clearRefreshToken(): Promise<void> {
-  if (Platform.OS === "web") {
-    await AsyncStorage.removeItem(APP_CONFIG.storageKeys.refreshToken);
-    return;
-  }
-  await SecureStore.deleteItemAsync(APP_CONFIG.storageKeys.refreshToken);
+export async function clearLegacyAuthTokens(): Promise<void> {
+  await Promise.all([
+    remove(APP_CONFIG.storageKeys.authToken),
+    remove(APP_CONFIG.storageKeys.refreshToken),
+  ]);
 }

@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 
@@ -180,7 +181,7 @@ async function postCategory<T>(
   const endpoint = `${baseUrl}/common/dashboard_api.php`;
   const token = await getAccessToken();
 
-  const response = await fetch(endpoint, {
+  const response = await fetchWithSession(endpoint, {
     method: "POST",
 
     headers: {
@@ -281,7 +282,7 @@ export async function loadDashboardFilterOptions(
     ? `${zoneFiltersEndpoint}?${queryString}`
     : zoneFiltersEndpoint;
 
-  const response = await fetch(url, {
+  const response = await fetchWithSession(url, {
     method: "GET",
 
     headers: {

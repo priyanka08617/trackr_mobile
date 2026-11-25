@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 
@@ -46,7 +47,7 @@ export async function loadAreaStores(): Promise<AreaStore[]> {
   let body: string;
 
   try {
-    response = await fetch(endpoint, {
+    response = await fetchWithSession(endpoint, {
       method: "GET",
       credentials: "omit",
       headers: {

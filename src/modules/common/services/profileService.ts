@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 import { trackerPlainText } from "./trackerText";
@@ -72,7 +73,7 @@ export async function getUserProfile(): Promise<ProfileData> {
   // ==========================================
 
   try {
-    response = await fetch(endpoint, {
+    response = await fetchWithSession(endpoint, {
       method: "GET",
       cache: "no-store",
       credentials: "omit",

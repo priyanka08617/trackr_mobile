@@ -9,12 +9,7 @@ import {
 } from "@/constants/theme";
 import { loginUser } from "@/services/authService";
 import type { Company } from "@/services/companyService";
-import {
-  clearAuthToken,
-  clearRefreshToken,
-  setAuthToken,
-  setRefreshToken,
-} from "@/storage/authStorage";
+import { endSession, startSession } from "@/services/sessionService";
 import { clearCompany, getSavedCompany } from "@/storage/companyStorage";
 import { getPasswordError } from "@/utils/validation";
 import { Image } from "expo-image";
@@ -85,17 +80,7 @@ export default function LoginScreen() {
         throw new Error("Invalid login folder.");
       }
 
-      try {
-        await setAuthToken(result.data.access_token);
-        await setRefreshToken(result.data.refresh_token);
-      } catch (error) {
-        await Promise.allSettled([clearAuthToken(), clearRefreshToken()]);
-        throw new Error(
-          error instanceof Error
-            ? `Unable to save login session: ${error.message}`
-            : "Unable to save login session.",
-        );
-      }
+      await startSession(result.data, result.company);
 
       // START 2026-11-11 12:59 IST - Test logs and /test route disabled; /test is not a registered screen.
       // console.log("Login user data:", result.data.user);
@@ -136,8 +121,7 @@ export default function LoginScreen() {
 
   const handleChangeCompany = async () => {
     try {
-      await clearAuthToken();
-      await clearRefreshToken();
+      await endSession();
       await clearCompany();
       setConfirmCompanyChange(false);
       router.replace("/company");

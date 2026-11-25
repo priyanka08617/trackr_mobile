@@ -1,3 +1,4 @@
+import { getSessionVersion } from "@/services/sessionService";
 import { loadAreaStores, type AreaStore } from "./StoresService";
 
 export function uniqueLocationNames(values: readonly string[]): string[] {
@@ -21,16 +22,30 @@ export function storeLocationOptions(stores: readonly AreaStore[], region = "", 
   };
 }
 
-let cached: { stores: AreaStore[]; time: number } | undefined;
-let pending: Promise<AreaStore[]> | undefined;
+let cache: {
+  sessionVersion: number;
+  stores?: AreaStore[];
+  time: number;
+  pending?: Promise<AreaStore[]>;
+} | undefined;
+
 export async function loadLocationFilterOptions(region = "", zone = "") {
-  if (!cached || Date.now() - cached.time > 60_000) {
-    pending ??= loadAreaStores();
+  const sessionVersion = getSessionVersion();
+  if (cache?.sessionVersion !== sessionVersion) {
+    cache = { sessionVersion, time: 0 };
+  }
+  const entry = cache;
+  if (!entry.stores || Date.now() - entry.time > 60_000) {
+    const pending = entry.pending ??= loadAreaStores();
     try {
-      cached = { stores: await pending, time: Date.now() };
+      entry.stores = await pending;
+      entry.time = Date.now();
     } finally {
-      pending = undefined;
+      if (entry.pending === pending) entry.pending = undefined;
     }
   }
-  return storeLocationOptions(cached.stores, region, zone);
+  if (getSessionVersion() !== sessionVersion) {
+    throw new Error("Login session changed. Please try again.");
+  }
+  return storeLocationOptions(entry.stores, region, zone);
 }

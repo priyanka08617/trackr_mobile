@@ -1,10 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Company } from "../services/companyService";
+import { validateCompany, type Company } from "../services/companyService";
 
 const STORAGE_KEY = "trackr_selected_company";
 
 export async function saveCompany(company: Company): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(company));
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(validateCompany(company)));
 }
 
 export async function getSavedCompany(): Promise<Company | null> {
@@ -13,7 +13,7 @@ export async function getSavedCompany(): Promise<Company | null> {
   if (!data) return null;
 
   try {
-    return JSON.parse(data) as Company;
+    return validateCompany(JSON.parse(data));
   } catch {
     await AsyncStorage.removeItem(STORAGE_KEY);
     return null;

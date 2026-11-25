@@ -28,8 +28,7 @@ import {
   FONT_WEIGHT,
   SPACING,
 } from "../constants/theme";
-import { clearAuthToken, clearRefreshToken } from "../storage/authStorage";
-import { clearUser } from "../storage/userStorage";
+import { endSession, hasActiveSession, onSessionExpired } from "../services/sessionService";
 import { AppButton } from "./AppButton";
 import {
   AreaHeaderActionContext,
@@ -114,12 +113,12 @@ export default function AreaLayout() {
     setLoggingOut(true);
 
     try {
-      await Promise.all([clearAuthToken(), clearRefreshToken(), clearUser()]);
+      await endSession();
 
       setConfirmLogout(false);
       router.replace("/login");
-    } catch (error) {
-      Alert.alert("Logout failed", "Unable to clear local login details.");
+    } catch {
+      Alert.alert("Logout failed", "Unable to complete logout. Please try again.");
     } finally {
       setLoggingOut(false);
     }
@@ -128,9 +127,14 @@ export default function AreaLayout() {
   // ===================Added by me 18-11-2026===========
   useEffect(() => {
     let active = true;
+    const unsubscribe = onSessionExpired(() => router.replace("/login"));
 
     const loadUserCategory = async () => {
       try {
+        if (!(await hasActiveSession())) {
+          if (active) router.replace("/login");
+          return;
+        }
         const data = await getUserProfile();
 
         if (active) {
@@ -146,6 +150,7 @@ export default function AreaLayout() {
 
     return () => {
       active = false;
+      unsubscribe();
     };
   }, []);
   // ===================Added by me 18-11-2026===========

@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 
@@ -122,7 +123,7 @@ export async function fetchCompanyFaqs(
   // }
 
   // STEP 4: Call PHP API
-  const response = await fetch(endpoint.toString(), {
+  const response = await fetchWithSession(endpoint.toString(), {
     method: "GET",
     headers: {
       Accept: "application/json",

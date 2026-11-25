@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 
@@ -80,7 +81,7 @@ async function requestVoid(
   let body: string;
 
   try {
-    response = await fetch(url, {
+    response = await fetchWithSession(url, {
       method: postData === undefined ? "GET" : "POST",
       credentials: "omit",
       headers: {

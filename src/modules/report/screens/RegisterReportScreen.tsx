@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
 import AreaPage from "@/components/AreaPage";
@@ -275,7 +276,7 @@ async function fetchReportRows(
     search: filters.search ?? "",
   });
   const url = `${baseUrl}/${endpoint.path}`;
-  const response = await fetch(url, {
+  const response = await fetchWithSession(url, {
     method: endpoint.method,
     signal,
     headers: {
@@ -559,7 +560,7 @@ export default function RegisterReportScreen({
 
       params.append("search", search.trim());
       // =====================================
-      const response = await fetch(
+      const response = await fetchWithSession(
         `${baseUrl}/${endpoint.exportPath}?${params.toString()}`,
         {
           headers: {

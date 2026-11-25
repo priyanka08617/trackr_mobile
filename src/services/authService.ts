@@ -1,4 +1,6 @@
 import { getSavedCompany } from "@/storage/companyStorage";
+import { fetchWithoutRedirect } from "./apiUrlPolicy";
+import type { Company } from "./companyService";
 
 export interface LoginResponse {
   success: boolean;
@@ -22,7 +24,7 @@ export interface LoginResponse {
 export async function loginUser(
   username: string,
   password: string,
-): Promise<LoginResponse> {
+): Promise<LoginResponse & { company: Company }> {
   const company = await getSavedCompany();
 
   if (!company) {
@@ -31,7 +33,7 @@ export async function loginUser(
 
   const apiUrl = company.api_url.replace(/\/+$/, "");
 
-  const response = await fetch(`${apiUrl}/auth/login.php`, {
+  const response = await fetchWithoutRedirect(`${apiUrl}/auth/login.php`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -56,5 +58,5 @@ export async function loginUser(
     throw new Error("Invalid login response.");
   }
 
-  return result;
+  return { ...result, company };
 }

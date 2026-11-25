@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 
@@ -46,7 +47,7 @@ export async function loadAreaStores(): Promise<AreaStore[]> {
   for (let attempt = 0; attempt < 2; attempt++) {
     let response: Response;
     try {
-      response = await fetch(`${API_BASE}/all_stores.php`, {
+      response = await fetchWithSession(`${API_BASE}/all_stores.php`, {
         method: "GET",
         cache: "no-store",
         headers: {

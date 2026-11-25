@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
 import { AppLoader } from "@/components/AppLoader";
@@ -135,7 +136,7 @@ async function fetchCompanyFaqs(
   for (let attempt = 0; attempt < 2; attempt++) {
     let response: Response;
     try {
-      response = await fetch(url.toString(), {
+      response = await fetchWithSession(url.toString(), {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
