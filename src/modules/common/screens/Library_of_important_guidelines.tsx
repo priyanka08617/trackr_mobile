@@ -58,7 +58,24 @@ export default function ImportantGuidelines({ onBack }: Props) {
   // LOAD DOCUMENTS
   // ==========================================
 
-  const loadDocuments = useCallback(async (isRefresh = false) => {
+  const loadDocuments = useCallback(() => {
+    return loadImportantGuidelines()
+      .then((result) => {
+        setDocuments(Array.isArray(result) ? result : []);
+      })
+      .catch((cause: unknown) => {
+        const message =
+          cause instanceof Error ? cause.message : "Unable to load guidelines.";
+
+        setError(message);
+      })
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
+  }, []);
+
+  const reloadDocuments = useCallback((isRefresh = false) => {
     if (isRefresh) {
       setRefreshing(true);
     } else {
@@ -66,21 +83,8 @@ export default function ImportantGuidelines({ onBack }: Props) {
     }
 
     setError(null);
-
-    try {
-      const result = await loadImportantGuidelines();
-
-      setDocuments(Array.isArray(result) ? result : []);
-    } catch (cause) {
-      const message =
-        cause instanceof Error ? cause.message : "Unable to load guidelines.";
-
-      setError(message);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+    return loadDocuments();
+  }, [loadDocuments]);
 
   // ==========================================
   // HEADER BACK HANDLER
@@ -254,7 +258,7 @@ export default function ImportantGuidelines({ onBack }: Props) {
 
           <AppButton
             title="Try again"
-            onPress={() => void loadDocuments()}
+            onPress={() => void reloadDocuments()}
             style={styles.retry}
           />
         </View>
@@ -288,7 +292,7 @@ export default function ImportantGuidelines({ onBack }: Props) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshing={refreshing}
-        onRefresh={() => void loadDocuments(true)}
+        onRefresh={() => void reloadDocuments(true)}
         initialNumToRender={10}
         maxToRenderPerBatch={10}
         windowSize={7}

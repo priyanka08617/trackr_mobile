@@ -19,10 +19,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import AppButton from "@/components/AppButton";
-import AppHeader from "@/components/AppHeader";
-import AppInput from "@/components/AppInput";
-import AppLoader from "@/components/AppLoader";
+import { AppButton } from "@/components/AppButton";
+import { AppHeader } from "@/components/AppHeader";
+import { AppInput } from "@/components/AppInput";
+import { AppLoader } from "@/components/AppLoader";
 import {
   AreaHeaderBackContext,
   AreaHeaderBackVisibleContext,
@@ -103,7 +103,7 @@ export default function FestiveChecklist({
   initialSubmissionId,
   embedded = false,
 }: FestiveChecklistProps) {
-  const { width, height, fontScale } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
   const compact = width < 400 || fontScale > 1.2;
   const saveInFlight = useRef(false);
   const detailRequestId = useRef(0);
@@ -114,7 +114,7 @@ export default function FestiveChecklist({
   const [search, setSearch] = useState("");
   const [returnedPendingSubmission, setReturnedPendingSubmission] =
     useState<FestiveSubmission | null>(null);
-  const submissionsSnapshot = useRef<FestiveSubmission[]>(submissions);
+  const [submissionsSnapshot, setSubmissionsSnapshot] = useState(submissions);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(
     initialSubmissionId ?? null,
@@ -143,7 +143,7 @@ export default function FestiveChecklist({
       detailRequestId.current += 1;
       if (returningSubmission?.status === 1) {
         setReturnedPendingSubmission(returningSubmission);
-        if (submissions.length > 0) submissionsSnapshot.current = submissions;
+        if (submissions.length > 0) setSubmissionsSnapshot(submissions);
       }
       setSelectedId(null);
       setEditingQuestion(null);
@@ -211,7 +211,7 @@ export default function FestiveChecklist({
   }, [selected?.questions]);
   const visibleSubmissions = useMemo(() => {
     const baseSubmissions =
-      submissions.length > 0 ? submissions : submissionsSnapshot.current;
+      submissions.length > 0 ? submissions : submissionsSnapshot;
     if (
       !returnedPendingSubmission ||
       baseSubmissions.some((item) => item.id === returnedPendingSubmission.id)
@@ -219,7 +219,7 @@ export default function FestiveChecklist({
       return baseSubmissions;
     }
     return [returnedPendingSubmission, ...baseSubmissions];
-  }, [returnedPendingSubmission, submissions]);
+  }, [returnedPendingSubmission, submissions, submissionsSnapshot]);
   const filtered = visibleSubmissions.filter((item) =>
     item.category.toLowerCase().includes(search.trim().toLowerCase()),
   );
@@ -239,7 +239,7 @@ export default function FestiveChecklist({
 
   async function openSubmission(id: string) {
     if (saveInFlight.current) return;
-    if (submissions.length > 0) submissionsSnapshot.current = submissions;
+    if (submissions.length > 0) setSubmissionsSnapshot(submissions);
     const requestId = ++detailRequestId.current;
     setSelectedId(id);
     setEditingQuestion(null);

@@ -18,7 +18,6 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
 
 import { loadLocationFilterOptions } from "../services/locationFilters";
@@ -339,7 +338,6 @@ function ReportTable({
   total: number;
   goToPage: (page: number) => void;
 }) {
-  const { height } = useWindowDimensions();
 
   const columns = REGISTER_TABLE_COLUMNS[reportId];
 
@@ -479,7 +477,6 @@ export default function RegisterReportScreen({
   });
   const offset = (currentPage - 1) * pageSize;
   const totalPages = Math.ceil(total / pageSize);
-  const firstVisiblePage = currentPage;
   // const visiblePages = Array.from(
   //   { length: Math.max(0, Math.min(5, totalPages - firstVisiblePage + 1)) },
   //   (_, index) => firstVisiblePage + index,

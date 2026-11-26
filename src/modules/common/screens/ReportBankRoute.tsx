@@ -58,7 +58,25 @@ export default function ReportBankRoute() {
   const [error, setError] = useState<string>();
 
   // STEP 1: Load reports from selected company API
-  const loadReports = useCallback(async (isRefresh = false) => {
+  const loadReports = useCallback(() => {
+    return loadReportBank()
+      .then((result) => {
+        setReports(result);
+      })
+      .catch((cause: unknown) => {
+        setReports([]);
+
+        setError(
+          cause instanceof Error ? cause.message : "Unable to load reports.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
+  }, []);
+
+  const reloadReports = useCallback((isRefresh = false) => {
     if (isRefresh) {
       setRefreshing(true);
     } else {
@@ -66,22 +84,8 @@ export default function ReportBankRoute() {
     }
 
     setError(undefined);
-
-    try {
-      const result = await loadReportBank();
-
-      setReports(result);
-    } catch (cause) {
-      setReports([]);
-
-      setError(
-        cause instanceof Error ? cause.message : "Unable to load reports.",
-      );
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+    return loadReports();
+  }, [loadReports]);
 
   // STEP 2: Initial loading and back navigation
   useEffect(() => {
@@ -215,7 +219,7 @@ export default function ReportBankRoute() {
         )}
 
         {error && (
-          <AppButton title="Try again" onPress={() => void loadReports()} />
+          <AppButton title="Try again" onPress={() => void reloadReports()} />
         )}
 
         {loading ? (
@@ -257,7 +261,7 @@ export default function ReportBankRoute() {
             id: String(report.id),
           }))}
           refreshing={refreshing}
-          onRefresh={() => void loadReports(true)}
+          onRefresh={() => void reloadReports(true)}
           empty={
             loading
               ? "Loading reports..."

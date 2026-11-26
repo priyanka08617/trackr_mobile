@@ -30,7 +30,6 @@ function trackerPlainText(value: string): string {
 }
 
 export async function loadEscalationDocuments(): Promise<EscalationDocument[]> {
-  console.log("Escalation service started");
   // STEP 1: Get selected company
   const company = await getSavedCompany();
 
@@ -40,7 +39,6 @@ export async function loadEscalationDocuments(): Promise<EscalationDocument[]> {
 
   // STEP 2: Get access token
   const token = await getAuthToken();
-  console.log("Token available:", Boolean(token));
   if (!token) {
     throw new Error("Login session not found. Please log in again.");
   }
@@ -50,7 +48,6 @@ export async function loadEscalationDocuments(): Promise<EscalationDocument[]> {
   const baseUrl = company.api_url.replace(/\/+$/, "");
   const endpoint = `${baseUrl}/common/escalation_matrix.php`;
 
-  console.log("API URL:", endpoint);
 
   // After getting the token
 
@@ -65,7 +62,6 @@ export async function loadEscalationDocuments(): Promise<EscalationDocument[]> {
         Authorization: `Bearer ${token}`,
       },
     });
-    console.log("HTTP status:", response.status);
   } catch {
     throw new Error("Could not reach the Escalation Matrix API.");
   }
@@ -88,25 +84,11 @@ export async function loadEscalationDocuments(): Promise<EscalationDocument[]> {
     throw new Error("Session expired. Please log in again.");
   }
 
-  // if (response.status === 401) {
-  //   console.log("Escalation authentication failed:", {
-  //     status: response.status,
-  //     message: payload.message ?? "No message returned",
-  //   });
-
-  //   throw new Error(payload.message || "Authentication failed (HTTP 401).");
-  // }
-
   // if (response.status === 403) {
   //   throw new Error("You are not authorized to access Escalation Matrix.");
   // }
 
   if (response.status === 403) {
-    console.log("Escalation API 403:", {
-      status: response.status,
-      message: payload.message,
-    });
-
     throw new Error(
       payload.message || "You are not authorized to access Escalation Matrix.",
     );

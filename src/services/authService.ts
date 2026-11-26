@@ -1,6 +1,7 @@
 import { getSavedCompany } from "@/storage/companyStorage";
 import { fetchWithoutRedirect } from "./apiUrlPolicy";
 import type { Company } from "./companyService";
+import { getSessionSnapshot, subscribeSession } from "./sessionService";
 
 // =============================================
 // LOGIN RESPONSE
@@ -83,6 +84,7 @@ export interface PasswordResetResponse {
 
 let recoveryEmail = "";
 let recoveryToken = "";
+subscribeSession(clearPasswordRecovery);
 
 export function getPasswordRecoveryEmail() {
   return recoveryEmail;
@@ -105,6 +107,7 @@ async function passwordRecoveryRequest(
   endpoint: string,
   payload: object,
 ): Promise<PasswordResetResponse> {
+  const scope = getSessionSnapshot();
   const company = await getSavedCompany();
 
   if (!company) {
@@ -113,7 +116,9 @@ async function passwordRecoveryRequest(
 
   const apiUrl = company.api_url.replace(/\/+$/, "");
 
-  const response = await fetch(`${apiUrl}/auth/${endpoint}`, {
+  if (scope !== getSessionSnapshot()) throw new Error("The selected company changed. Please restart recovery.");
+
+  const response = await fetchWithoutRedirect(`${apiUrl}/auth/${endpoint}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -122,6 +127,7 @@ async function passwordRecoveryRequest(
   });
 
   const result: PasswordResetResponse = await response.json();
+  if (scope !== getSessionSnapshot()) throw new Error("The selected company changed. Please restart recovery.");
 
   if (!response.ok || !result.success) {
     throw new Error(result.message || "Request failed.");

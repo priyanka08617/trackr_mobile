@@ -1,47 +1,27 @@
-// import * as SplashScreen from "expo-splash-screen";
-// import { useColorScheme } from "react-native";
-
-// // import AppTabs from "@/components/app-tabs";
-
-// SplashScreen.preventAutoHideAsync();
-
-// export default function TabLayout() {
-//   const colorScheme = useColorScheme();
-//   return (
-//     // <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-//     //   <AppTabs />
-//     // </ThemeProvider>
-
-//     <p>Hello Test</p>
-//   );
-// }
-
-// import { Stack } from "expo-router";
-// import * as SplashScreen from "expo-splash-screen";
-// import { useEffect } from "react";
-
-// export default function RootLayout() {
-//   useEffect(() => {
-//     SplashScreen.hideAsync();
-//   }, []);
-
-//   return (
-//     <Stack
-//       screenOptions={{
-//         headerShown: false,
-//       }}
-//     />
-//   );
-// }
-
+import { useSession } from "@/hooks/useSession";
+import { initializeSession } from "@/services/sessionService";
 import { Stack } from "expo-router";
+import { useEffect } from "react";
+import { ActivityIndicator } from "react-native";
 
 export default function RootLayout() {
+  const { identity, ready } = useSession();
+
+  useEffect(() => {
+    void initializeSession().catch(() => undefined);
+  }, []);
+
+  if (!ready) return <ActivityIndicator size="large" />;
+
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    />
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Protected guard={identity !== null}>
+        <Stack.Screen name="common" />
+      </Stack.Protected>
+      <Stack.Protected guard={identity?.routeGroup === "area_manager"}>
+        <Stack.Screen name="area_manager" />
+      </Stack.Protected>
+    </Stack>
   );
 }

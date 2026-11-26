@@ -49,7 +49,7 @@ export default function Reports({
   const backHandlerRef = useContext(AreaHeaderBackContext);
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
   const goToDashboard = useCallback(
-    () => router.replace("/area_manager/dashboard"),
+    () => router.replace("/common/home"),
     [],
   );
   const [selected, setSelected] = useState<(typeof REPORTS)[number] | null>(

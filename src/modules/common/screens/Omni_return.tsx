@@ -91,8 +91,23 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
       ? NO_DATE_RANGE
       : appliedDateRange;
 
+  const [previousQuery, setPreviousQuery] = useState({ status, search, requestDateRange });
+  if (
+    previousQuery.status !== status ||
+    previousQuery.search !== search ||
+    previousQuery.requestDateRange !== requestDateRange
+  ) {
+    setPreviousQuery({ status, search, requestDateRange });
+    setTotal(0);
+    setExportMessage(undefined);
+    setLoading(true);
+    setRecords([]);
+    setPageIndex(0);
+    setError(undefined);
+  }
+
   const fetchPage = useCallback(
-    async (
+    (
       nextStatus: OmniReturnStatus,
       nextPage: number,
       nextSearch: string,
@@ -102,36 +117,42 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
       const controller = new AbortController();
       activeRequest.current = controller;
       const currentRequest = ++requestId.current;
-      setLoading(true);
-      setRecords([]);
-      setPageIndex(nextPage);
-      setError(undefined);
-      try {
-        const page = await loadOmniReturns(
-          nextStatus,
-          nextPage * PAGE_SIZE,
-          nextSearch,
-          controller.signal,
-          nextDates.from,
-          nextDates.to,
-        );
-        if (currentRequest !== requestId.current) return;
-        setRecords(page.records);
-        setTotal(page.total);
-      } catch (cause) {
-        if (currentRequest !== requestId.current) return;
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "Unable to load Omni Return records.",
-        );
-        setTotal(0);
-      } finally {
-        if (currentRequest === requestId.current) setLoading(false);
-      }
+      return loadOmniReturns(
+        nextStatus,
+        nextPage * PAGE_SIZE,
+        nextSearch,
+        controller.signal,
+        nextDates.from,
+        nextDates.to,
+      )
+        .then((page) => {
+          if (currentRequest !== requestId.current) return;
+          setRecords(page.records);
+          setTotal(page.total);
+        })
+        .catch((cause: unknown) => {
+          if (currentRequest !== requestId.current) return;
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "Unable to load Omni Return records.",
+          );
+          setTotal(0);
+        })
+        .finally(() => {
+          if (currentRequest === requestId.current) setLoading(false);
+        });
     },
     [],
   );
+
+  const requestPage = useCallback((nextStatus: OmniReturnStatus, nextPage: number, nextSearch: string, dates: { from: string; to: string }) => {
+    setLoading(true);
+    setRecords([]);
+    setPageIndex(nextPage);
+    setError(undefined);
+    return fetchPage(nextStatus, nextPage, nextSearch, dates);
+  }, [fetchPage]);
 
   useEffect(() => {
     if (backHandlerRef) backHandlerRef.current = onBack;
@@ -142,8 +163,6 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
     };
   }, [backHandlerRef, onBack, setBackVisible]);
   useEffect(() => {
-    setTotal(0);
-    setExportMessage(undefined);
     void fetchPage(
       status,
       0,
@@ -161,11 +180,11 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
   const submitSearch = useCallback(() => {
     const term = searchText.trim();
     if (term === search) {
-      void fetchPage(status, 0, search, requestDateRange);
+      void requestPage(status, 0, search, requestDateRange);
     } else {
       setSearch(term);
     }
-  }, [fetchPage, requestDateRange, search, searchText, status]);
+  }, [requestPage, requestDateRange, search, searchText, status]);
 
   const applyDates = useCallback(() => {
     const { from, to } = dateRange;
@@ -194,7 +213,7 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
   const changePage = useCallback(
     (nextPage: number) => {
       if (!loading && nextPage >= 0 && nextPage * PAGE_SIZE < total) {
-        void fetchPage(
+        void requestPage(
           status,
           nextPage,
           status === "pending" ? search : "",
@@ -202,7 +221,7 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
         );
       }
     },
-    [fetchPage, loading, requestDateRange, search, status, total],
+    [requestPage, loading, requestDateRange, search, status, total],
   );
 
   const changeStatus = useCallback(
@@ -496,6 +515,7 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
                     value(record.submitted_on),
                   ]),
               <Text
+                key="status"
                 style={[
                   styles.statusBadge,
                   status === "complete"

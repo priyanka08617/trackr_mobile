@@ -39,20 +39,27 @@ export default function AllStores({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(() => {
+    return loadAreaStores()
+      .then((result) => {
+        setStores(result);
+        setPage(1);
+      })
+      .catch((cause: unknown) => {
+        setError(
+          cause instanceof Error ? cause.message : "Unable to load stores.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const reloadStores = useCallback(() => {
     setLoading(true);
     setError(undefined);
-    try {
-      setStores(await loadAreaStores());
-      setPage(1);
-    } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Unable to load stores.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    return refresh();
+  }, [refresh]);
 
   useEffect(() => {
     if (backHandlerRef) backHandlerRef.current = onBack;
@@ -193,7 +200,7 @@ export default function AllStores({ onBack }: { onBack: () => void }) {
               <Text accessibilityRole="alert" style={styles.error}>
                 {error}
               </Text>
-              <AppButton title="Try again" onPress={() => void refresh()} />
+              <AppButton title="Try again" onPress={() => void reloadStores()} />
             </>
           )}
         </View>

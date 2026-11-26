@@ -2,13 +2,15 @@ import { fetchWithSession } from "@/services/sessionService";
 import type { AreaIconName } from "@/components/AreaIcon";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
-import { readApiJson } from "../../common/services/DashboardService";
+import { readApiJson } from "@/services/apiResponse";
 import { loadLocationFilterOptions } from "./locationFilters";
 import { tableDateRange } from "./reportDateRange";
 import type { ReportColumn } from "./reportTableColumns";
 import { normalizeTrackerText } from "./trackerText";
 
 const PAGE_SIZE = 50;
+const encodeRegionForApi = (value: string) => value.replace(/&/g, "&amp;");
+
 
 const REPORT_ENDPOINTS = {
   fmcg_de: {
@@ -176,7 +178,7 @@ export async function loadTrackerReportPage(
     length: String(limit),
     from: tableRange.from,
     to: tableRange.to,
-    region: filters.region,
+    region: encodeRegionForApi(filters.region),
     zone: filters.zone,
     store: filters.store,
   });
@@ -300,7 +302,7 @@ export async function requestTrackerCsv(
   const query = new URLSearchParams({
     from: filters.from,
     to: filters.to,
-    region: filters.region,
+    region: encodeRegionForApi(filters.region),
     zone: filters.zone,
     store: filters.store,
   });

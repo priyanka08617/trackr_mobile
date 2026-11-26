@@ -223,7 +223,7 @@ export default function CompanyFaq() {
   const backHandlerRef = useContext(AreaHeaderBackContext);
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
   const goToDashboard = useCallback(
-    () => router.replace("/area_manager/dashboard"),
+    () => router.replace("/common/home"),
     [],
   );
   const [faqs, setFaqs] = useState<CompanyFaqItem[]>([]);
@@ -248,9 +248,6 @@ export default function CompanyFaq() {
     let active = true;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30_000);
-    setLoading(true);
-    setError(undefined);
-
     fetchCompanyFaqs(controller.signal)
       .then((items) => {
         if (active) setFaqs(items);

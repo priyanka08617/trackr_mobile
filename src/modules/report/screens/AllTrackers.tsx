@@ -133,9 +133,9 @@ function TrackerTable({
   goToPage: (page: number) => void;
   loading: boolean;
 }) {
-  const columns = trackerReportColumns(trackerId, apiColumns, rows);
+  const columns = useMemo(() => trackerReportColumns(trackerId, apiColumns, rows), [trackerId, apiColumns, rows]);
 
-  const tableData = rows.map((row, index) => {
+  const tableData = useMemo(() => rows.map((row, index) => {
     const cells = staticReportCells(trackerTableRow(row), columns);
     const record: Record<string, string> = {
       __rowKey: `${trackerId}-${offset + index}-${row.id}`,
@@ -147,9 +147,9 @@ function TrackerTable({
     });
 
     return record;
-  });
+  }), [columns, offset, rows, trackerId]);
 
-  const tableColumns = [
+  const tableColumns = useMemo(() => [
     {
       title: "#",
       dataIndex: "serial",
@@ -160,7 +160,11 @@ function TrackerTable({
       title: column.title,
       dataIndex: `col_${index}`,
     })),
-  ];
+  ], [columns]);
+
+  const handlePageChange = useCallback((page: number) => {
+    if (!loading && page !== currentPage) void goToPage(page);
+  }, [currentPage, goToPage, loading]);
 
   return (
     <View style={styles.tableShell}>
@@ -174,11 +178,7 @@ function TrackerTable({
         currentPage={currentPage}
         pageSize={pageSize}
         totalRecords={total}
-        onPageChange={(page) => {
-          if (!loading && page !== currentPage) {
-            void goToPage(page);
-          }
-        }}
+        onPageChange={handlePageChange}
         showSearch={false}
         showColumnFilter={false}
         showPageSize={false}
@@ -199,7 +199,7 @@ function toOptions(values: readonly string[]): SelectOption[] {
 }
 
 export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
-  const initialRange = useMemo(defaultDateRange, []);
+  const initialRange = useMemo(() => defaultDateRange(), []);
   const [fromDate, setFromDate] = useState(initialRange.from);
   const [toDate, setToDate] = useState(initialRange.to);
   const [region, setRegion] = useState("");

@@ -32,8 +32,6 @@ const PRIMARY_COLOR = themeColors.primary ?? themeColors.PRIMARY ?? "#1759A8";
 // Replace these with your existing navbar image
 // URLs, if available. Empty values use fallbacks.
 
-const LOGO_URI = "../../assets/images/logo/logo.svg";
-const PROFILE_IMAGE_URI = "../../assets/images/logo/fox.svg";
 
 // ==========================================
 // PROFILE FIELD
@@ -68,7 +66,7 @@ export default function Profile() {
   const backHandlerRef = useContext(AreaHeaderBackContext);
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
   const goToDashboard = useCallback(
-    () => router.replace("/area_manager/dashboard"),
+    () => router.replace("/common/home"),
     [],
   );
 
@@ -157,7 +155,6 @@ export default function Profile() {
         ? "Inactive"
         : "Not provided";
 
-  const avatarLetter = profileName.charAt(0).toUpperCase();
 
   // ==========================================
   // SCREEN DESIGN

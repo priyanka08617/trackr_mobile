@@ -11,9 +11,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { findCompany } from "../services/companyService";
-import { saveCompany } from "../storage/companyStorage";
+import { switchCompany } from "../services/sessionService";
 
-import AppButton from "@/components/AppButton";
+import { AppButton } from "@/components/AppButton";
 import {
   COLORS,
   FONT_SIZE,
@@ -42,7 +42,7 @@ export default function CompanyScreen() {
     try {
       const company = await findCompany(name);
 
-      await saveCompany(company);
+      await switchCompany(company);
       router.replace("/login");
       // const savedCompany = await getSavedCompany();
 

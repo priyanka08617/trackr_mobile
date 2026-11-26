@@ -2,12 +2,16 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { validateCompany, type Company } from "../services/companyService";
 
 const STORAGE_KEY = "trackr_selected_company";
+let company: Company | null | undefined;
+let pending: Promise<Company | null> | undefined;
 
-export async function saveCompany(company: Company): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(validateCompany(company)));
+export async function saveCompany(next: Company): Promise<void> {
+  const validated = validateCompany(next);
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(validated));
+  company = validated;
 }
 
-export async function getSavedCompany(): Promise<Company | null> {
+async function readCompany(): Promise<Company | null> {
   const data = await AsyncStorage.getItem(STORAGE_KEY);
 
   if (!data) return null;
@@ -15,13 +19,22 @@ export async function getSavedCompany(): Promise<Company | null> {
   try {
     return validateCompany(JSON.parse(data));
   } catch {
-    await AsyncStorage.removeItem(STORAGE_KEY);
     return null;
   }
 }
 
+export function getSavedCompany(): Promise<Company | null> {
+  if (company !== undefined) return Promise.resolve(company);
+  pending ??= readCompany().then((stored) => {
+    if (company === undefined) company = stored;
+    return company;
+  }).finally(() => { pending = undefined; });
+  return pending;
+}
+
 export async function clearCompany(): Promise<void> {
   await AsyncStorage.removeItem(STORAGE_KEY);
+  company = null;
 }
 
 // import AsyncStorage from "@react-native-async-storage/async-storage";

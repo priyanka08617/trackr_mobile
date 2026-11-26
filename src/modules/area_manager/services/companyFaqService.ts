@@ -86,10 +86,6 @@ export async function fetchCompanyFaqs(
 
   //   const rawResponse = await response.text();
 
-  // console.log("FAQ API URL:", endpoint.toString());
-  // console.log("FAQ HTTP Status:", response.status);
-  // console.log("FAQ Content Type:", response.headers.get("content-type"));
-  // console.log("FAQ Raw Response:", rawResponse.substring(0, 1500));
 
   // let payload;
 
@@ -135,10 +131,6 @@ export async function fetchCompanyFaqs(
   // STEP 5: Read API response only once
   const rawResponse = await response.text();
 
-  console.log("FAQ API URL:", endpoint.toString());
-  console.log("FAQ HTTP Status:", response.status);
-  console.log("FAQ Content Type:", response.headers.get("content-type"));
-  console.log("FAQ Raw Response:", rawResponse.substring(0, 1500));
 
   let result: Record<string, unknown>;
 

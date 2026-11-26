@@ -1,7 +1,8 @@
-import { getSavedCompany } from "@/storage/companyStorage";
+import { clearCompany, getSavedCompany, saveCompany } from "@/storage/companyStorage";
 import {
   clearAuthSession,
   clearLegacyAuthTokens,
+  clearPersistedWebSession,
   readAuthSession,
   saveAuthSession,
   type AuthSession,
@@ -9,16 +10,28 @@ import {
 import { clearUser } from "@/storage/userStorage";
 import { fetchWithoutRedirect, getCompanyRequestUrl, getTrustedCompanyApiBase } from "./apiUrlPolicy";
 import type { Company } from "./companyService";
+import { parseSessionIdentity, type SessionIdentity } from "./sessionNavigation";
 
 interface TokenPair {
   access_token?: unknown;
   refresh_token?: unknown;
   expires_in?: unknown;
+  user?: { id?: unknown; user_category_id?: unknown; user_login_folder_path?: unknown };
 }
 
 const EXPIRED_MESSAGE = "Session expired. Please log in again.";
 const TOKEN = /^[a-f0-9]{64}$/;
-const expiryListeners = new Set<() => void>();
+interface SessionSnapshot {
+  ready: boolean;
+  identity: SessionIdentity | null;
+  companyId: string | null;
+  version: number;
+}
+
+const initialSnapshot: SessionSnapshot = { ready: false, identity: null, companyId: null, version: 0 };
+let snapshot = initialSnapshot;
+const listeners = new Set<() => void>();
+let bootstrap: Promise<void> | undefined;
 let version = 0;
 let invalidated = false;
 let previousAccessToken: string | undefined;
@@ -32,20 +45,41 @@ function serializeSession<T>(work: () => Promise<T>): Promise<T> {
   return next;
 }
 
-export function onSessionExpired(listener: () => void): () => void {
-  expiryListeners.add(listener);
-  return () => { expiryListeners.delete(listener); };
+export function subscribeSession(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
 }
 
-export function getSessionVersion() {
-  return version;
+export function getSessionSnapshot() {
+  return snapshot;
 }
 
-export async function hasActiveSession() {
-  if (invalidated) return false;
-  const session = await readAuthSession();
-  const company = await getSavedCompany();
-  return !invalidated && !!session && matchesCompany(session, company);
+export function getInitialSessionSnapshot() {
+  return initialSnapshot;
+}
+
+function publishSession(session: AuthSession | null) {
+  snapshot = {
+    ready: true,
+    identity: session?.identity ?? null,
+    companyId: session?.identity ? session.companyId : null,
+    version,
+  };
+  listeners.forEach((listener) => listener());
+}
+
+export function initializeSession(): Promise<void> {
+  bootstrap ??= serializeSession(async () => {
+    let restored: AuthSession | null = null;
+    try {
+      await clearPersistedWebSession();
+      const [session, company] = await Promise.all([readAuthSession(), getSavedCompany()]);
+      if (session && matchesCompany(session, company)) restored = session;
+    } finally {
+      publishSession(restored);
+    }
+  });
+  return bootstrap;
 }
 
 type SessionCompany = Pick<AuthSession, "companyId" | "apiBase">;
@@ -55,7 +89,11 @@ function matchesCompany(session: SessionCompany, company: Company | null) {
     session.apiBase === company.api_url;
 }
 
-function parseTokenPair(tokens: TokenPair | undefined, company: SessionCompany): AuthSession {
+function parseTokenPair(
+  tokens: TokenPair | undefined,
+  company: SessionCompany,
+  identity: SessionIdentity | null,
+): AuthSession {
   if (
     typeof tokens?.access_token !== "string" || !TOKEN.test(tokens.access_token) ||
     typeof tokens.refresh_token !== "string" || !TOKEN.test(tokens.refresh_token) ||
@@ -70,38 +108,50 @@ function parseTokenPair(tokens: TokenPair | undefined, company: SessionCompany):
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
     expiresAt: Date.now() + tokens.expires_in * 1000,
+    identity,
   };
 }
 
 export function startSession(tokens: TokenPair, company: Company): Promise<void> {
   return serializeSession(async () => {
+    const identity = parseSessionIdentity(
+      tokens.user?.id,
+      tokens.user?.user_category_id,
+      tokens.user?.user_login_folder_path,
+    );
     const session = parseTokenPair(tokens, {
       companyId: String(company.company_id),
       apiBase: getTrustedCompanyApiBase(company.api_url),
-    });
+    }, identity);
+    if (!identity) {
+      await postSessionAction("logout", session).catch(() => undefined);
+      throw new Error("This user category does not have a supported mobile dashboard.");
+    }
     if (!matchesCompany(session, await getSavedCompany())) {
       await postSessionAction("logout", session).catch(() => undefined);
       throw new Error("The selected company changed. Please sign in again.");
     }
-    version += 1;
-    previousAccessToken = undefined;
     try {
+      await clearUser();
       await saveAuthSession(session);
     } catch {
       await postSessionAction("logout", session).catch(() => undefined);
       throw new Error("Unable to save the login session.");
     }
+    version += 1;
+    previousAccessToken = undefined;
     invalidated = false;
+    publishSession(session);
     await clearLegacyAuthTokens().catch(() => undefined);
   });
 }
 
-async function invalidateSession(notify: boolean) {
+async function invalidateSession() {
   invalidated = true;
   version += 1;
   previousAccessToken = undefined;
+  publishSession(null);
   const cleared = await Promise.allSettled([clearAuthSession(), clearUser()]);
-  if (notify) expiryListeners.forEach((listener) => listener());
   if (cleared.some((result) => result.status === "rejected")) {
     throw new Error("Unable to clear local login details.");
   }
@@ -128,22 +178,40 @@ async function postSessionAction(action: "refresh" | "logout", session: AuthSess
   }
 }
 
-export function endSession(): Promise<void> {
+function finishSession(changeCompany?: () => Promise<void>): Promise<void> {
   if (logoutWork) return logoutWork;
   logoutWork = serializeSession(async () => {
     const session = invalidated ? null : await readAuthSession();
     if (session) await postSessionAction("logout", session);
-    await invalidateSession(false);
+    await invalidateSession();
+    await changeCompany?.();
   }).finally(() => {
     logoutWork = undefined;
   });
   return logoutWork;
 }
 
+export function endSession(): Promise<void> {
+  return finishSession();
+}
+
+export function switchCompany(company?: Company): Promise<void> {
+  if (logoutWork) return logoutWork.then(() => switchCompany(company));
+  return finishSession(() => company ? saveCompany(company) : clearCompany());
+}
+
 async function requireSession(expectedVersion: number): Promise<AuthSession> {
   const session = invalidated ? null : await readAuthSession();
   const company = await getSavedCompany();
-  if (version !== expectedVersion || invalidated || !session || !matchesCompany(session, company)) {
+  if (
+    version !== expectedVersion ||
+    invalidated ||
+    !session?.identity ||
+    snapshot.identity?.userId !== session.identity.userId ||
+    snapshot.identity.categoryId !== session.identity.categoryId ||
+    snapshot.companyId !== session.companyId ||
+    !matchesCompany(session, company)
+  ) {
     throw new Error(EXPIRED_MESSAGE);
   }
   return session;
@@ -159,16 +227,16 @@ function renewSession(expectedVersion: number, attemptedToken: string) {
 
     const result = await postSessionAction("refresh", session);
     if (result.status === 401) {
-      await invalidateSession(true);
+      await invalidateSession();
       throw new Error(EXPIRED_MESSAGE);
     }
 
-    const updated = parseTokenPair(result.data, session);
+    const updated = parseTokenPair(result.data, session, session.identity);
     try {
       await saveAuthSession(updated);
     } catch {
       await postSessionAction("logout", updated).catch(() => undefined);
-      await invalidateSession(true);
+      await invalidateSession();
       throw new Error("Unable to save the renewed session.");
     }
     previousAccessToken = session.accessToken;
@@ -215,7 +283,7 @@ export async function fetchWithSession(url: string, init: RequestInit): Promise<
   if (retry.status === 401 && !init.signal?.aborted) {
     await serializeSession(async () => {
       const current = await requireSession(requestVersion);
-      if (current.accessToken === renewed.accessToken) await invalidateSession(true);
+      if (current.accessToken === renewed.accessToken) await invalidateSession();
     });
     throw new Error(EXPIRED_MESSAGE);
   }

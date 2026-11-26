@@ -1,5 +1,5 @@
-import { fetchWithSession } from "@/services/sessionService";
-import { getAuthToken } from "@/storage/authStorage";
+import { APP_CONFIG } from "@/constants/config";
+import { fetchWithSession, getSessionSnapshot, subscribeSession } from "@/services/sessionService";
 import { getSavedCompany } from "@/storage/companyStorage";
 
 export interface AreaStore {
@@ -26,80 +26,71 @@ interface StoresResponse {
   }[];
 }
 
-export async function loadAreaStores(): Promise<AreaStore[]> {
+interface StoreDirectory {
+  status: number;
+  ok: boolean;
+  html: boolean;
+  payload: StoresResponse | null;
+}
+
+async function fetchStoreDirectory(scope: ReturnType<typeof getSessionSnapshot>): Promise<StoreDirectory> {
   const company = await getSavedCompany();
-  const baseUrl = company?.api_url?.trim().replace(/\/+$/, "");
+  if (!company) throw new Error("Company API URL not found. Please select a company.");
+  if (scope !== getSessionSnapshot()) throw new Error("Login session changed. Please try again.");
 
-  if (!baseUrl) {
-    throw new Error("Company API URL not found. Please select a company.");
-  }
-
-  const token = await getAuthToken();
-
-  if (!token) {
-    throw new Error("Please log in to view store contacts.");
-  }
-
-  // The company API URL already ends in /api/v1.
-  const endpoint = `${baseUrl}/common/all_stores.php`;
-
-  let response: Response;
-  let body: string;
-
+  const controller = new AbortController();
+  const unsubscribe = subscribeSession(() => controller.abort());
+  const timeout = setTimeout(() => controller.abort(), APP_CONFIG.requestTimeout);
   try {
-    response = await fetchWithSession(endpoint, {
-      method: "GET",
+    const response = await fetchWithSession(company.api_url + "/common/all_stores.php", {
       credentials: "omit",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
     });
-
-    body = await response.text();
-  } catch {
-    throw new Error("Could not reach the Store Contacts API.");
-  }
-
-  if (response.status === 401) {
-    throw new Error(
-      "Your login token has expired or is invalid. Please log in again.",
-    );
-  }
-
-  let payload: StoresResponse;
-
-  try {
-    const parsed = JSON.parse(body.replace(/^\uFEFF/, ""));
-
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      throw new Error("Invalid response.");
+    const body = await response.text();
+    let payload: StoresResponse | null = null;
+    try {
+      const parsed = JSON.parse(body.replace(/^\uFEFF/, ""));
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) payload = parsed;
+    } catch {
+      // Keep the view-specific error message for invalid responses.
     }
-
-    payload = parsed;
-  } catch {
-    throw new Error(
-      `The Store Contacts API returned invalid JSON (HTTP ${response.status}).`,
-    );
+    return {
+      status: response.status,
+      ok: response.ok,
+      payload,
+      html: response.redirected || /<html\b|<!doctype\s+html/i.test(body),
+    };
+  } finally {
+    clearTimeout(timeout);
+    unsubscribe();
   }
+}
 
-  const message =
-    typeof payload.message === "string" ? payload.message.trim() : "";
+let pending: Promise<StoreDirectory> | undefined;
+subscribeSession(() => { pending = undefined; });
 
-  if (response.status === 403) {
-    throw new Error(
-      message || "You are not authorized to view store contacts.",
-    );
-  }
+export function loadStoreDirectory(): Promise<StoreDirectory> {
+  const scope = getSessionSnapshot();
+  if (!scope.identity) return Promise.reject(new Error("Login session not found. Please log in again."));
+  pending ??= fetchStoreDirectory(scope).then((result) => {
+    if (scope !== getSessionSnapshot()) throw new Error("Login session changed. Please try again.");
+    return result;
+  }).finally(() => {
+    if (scope === getSessionSnapshot()) pending = undefined;
+  });
+  return pending;
+}
 
-  if (
-    !response.ok ||
-    payload.success !== true ||
-    !Array.isArray(payload.stores)
-  ) {
-    throw new Error(
-      message || `Unable to load store contacts (HTTP ${response.status}).`,
-    );
+export async function loadAreaStores(): Promise<AreaStore[]> {
+  const result = await loadStoreDirectory();
+  const { payload, status } = result;
+  if (!payload) throw new Error("The Store Contacts API returned invalid JSON (HTTP " + status + ").");
+  const message = typeof payload.message === "string" ? payload.message.trim() : "";
+  if (status === 403) throw new Error(message || "You are not authorized to view store contacts.");
+  if (!result.ok || payload.success !== true || !Array.isArray(payload.stores)) {
+    throw new Error(message || "Unable to load store contacts (HTTP " + status + ").");
   }
 
   return payload.stores.map((store) => ({
@@ -117,7 +108,6 @@ export async function loadAreaStores(): Promise<AreaStore[]> {
 }
 
 // export async function loadAreaStores(): Promise<AreaStore[]> {
-//   console.log("Escalation service started");
 //   // STEP 1: Get selected company
 //   const company = await getSavedCompany();
 
@@ -127,7 +117,6 @@ export async function loadAreaStores(): Promise<AreaStore[]> {
 
 //   // STEP 2: Get access token
 //   const token = await getAuthToken();
-//   console.log("Token available:", Boolean(token));
 //   if (!token) {
 //     throw new Error("Login session not found. Please log in again.");
 //   }
@@ -137,7 +126,6 @@ export async function loadAreaStores(): Promise<AreaStore[]> {
 //   const baseUrl = company.api_url.replace(/\/+$/, "");
 //   const endpoint = `${baseUrl}/all_stores.php`;
 
-//   console.log("API URL:", endpoint);
 
 //   // After getting the token
 

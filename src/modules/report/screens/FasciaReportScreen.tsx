@@ -141,19 +141,24 @@ export default function FasciaReportScreen() {
     return () => setHeaderTitle(null);
   }, [setHeaderTitle]);
 
-  const loadOptions = useCallback(async () => {
-    setOptionsError(undefined);
-    try {
-      const result = await loadFasciaReportOptions();
-      setStores(result.stores);
-    } catch (cause) {
-      setOptionsError(
-        cause instanceof Error
-          ? cause.message
-          : "Unable to load fascia report filters.",
-      );
-    }
+  const loadOptions = useCallback(() => {
+    return loadFasciaReportOptions()
+      .then((result) => {
+        setStores(result.stores);
+      })
+      .catch((cause: unknown) => {
+        setOptionsError(
+          cause instanceof Error
+            ? cause.message
+            : "Unable to load fascia report filters.",
+        );
+      });
   }, []);
+
+  const reloadOptions = useCallback(() => {
+    setOptionsError(undefined);
+    return loadOptions();
+  }, [loadOptions]);
 
   useEffect(() => {
     void loadOptions();
@@ -375,7 +380,7 @@ export default function FasciaReportScreen() {
             </Text>
             <AppButton
               title="Retry filters"
-              onPress={() => void loadOptions()}
+              onPress={() => void reloadOptions()}
             />
           </View>
         )}

@@ -36,12 +36,12 @@ export interface OmniReturnPage {
 interface OmniReturnResponse {
   success?: boolean;
   message?: string;
-  records?: Array<
+  records?: (
     Omit<OmniReturnRecord, "submitted_by"> & {
       submitted_by?: string | null;
       s1_name?: string | null;
     }
-  >;
+  )[];
   total?: number | string | null;
   limit?: number | string | null;
   offset?: number | string | null;

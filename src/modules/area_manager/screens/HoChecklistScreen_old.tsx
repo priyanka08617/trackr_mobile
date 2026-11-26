@@ -13,7 +13,7 @@ import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
 import { CARD, COLORS, SPACING } from "@/constants/theme";
 import {
-  AreaHeaderBackContext,
+  AreaHeaderBackRegistrationContext,
   AreaHeaderBackVisibleContext,
   AreaHeaderTitleContext,
 } from "@/components/AreaHeaderBackContext";
@@ -81,16 +81,26 @@ export default function HoChecklistScreen() {
   const [confirm, setConfirm] = useState<HoChecklist>();
   const [notice, setNotice] = useState<string>();
   const mutation = useRef(false);
-  const headerBack = useContext(AreaHeaderBackContext);
+  const registerHeaderBack = useContext(AreaHeaderBackRegistrationContext);
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
   const setTitle = useContext(AreaHeaderTitleContext);
 
-  useEffect(() => {
-    let active = true;
+  const [previousRequest, setPreviousRequest] = useState({ appliedSearch, code, page, refresh });
+  if (
+    previousRequest.appliedSearch !== appliedSearch ||
+    previousRequest.code !== code ||
+    previousRequest.page !== page ||
+    previousRequest.refresh !== refresh
+  ) {
+    setPreviousRequest({ appliedSearch, code, page, refresh });
     setLoading(true);
     setError(undefined);
     if (code) setDetail(undefined);
     else setList(undefined);
+  }
+
+  useEffect(() => {
+    let active = true;
     
     // Removed the company param from loadHoList, if needed, we can pass it
     const task = code
@@ -124,15 +134,15 @@ export default function HoChecklistScreen() {
   }, [code]);
 
   useEffect(() => {
-    if (headerBack) headerBack.current = goBack;
+    const unregister = registerHeaderBack(goBack);
     setBackVisible(true);
     setTitle(code ? "HO Checklist Details" : "HO Checklist");
     return () => {
-      if (headerBack) headerBack.current = null;
+      unregister();
       setBackVisible(false);
       setTitle(null);
     };
-  }, [code, goBack, headerBack, setBackVisible, setTitle]);
+  }, [code, goBack, registerHeaderBack, setBackVisible, setTitle]);
 
   function applySearch() {
     if (busy || loading) return;

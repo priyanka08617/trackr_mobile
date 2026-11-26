@@ -107,7 +107,7 @@ export async function loadReportBank(): Promise<ReportBankItem[]> {
     id: Number(item.id),
     applicable_for: trackerPlainText(item.applicable_for ?? ""),
     function_type: trackerPlainText(item.function_type ?? ""),
-    report_link: (item.report_link ?? "").trim(),
+    report_link: String(item.report_link ?? "").trim(),
     available_in_report_bank: trackerPlainText(
       item.available_in_report_bank ?? "",
     ),

@@ -72,28 +72,34 @@ export default function FestiveHomeRoute() {
   const backHandlerRef = useContext(AreaHeaderBackContext);
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
 
-  const loadOptions = useCallback(async () => {
+  const loadOptions = useCallback(() => {
+    return loadFestiveHomeOptions()
+      .then((result) => {
+        setChecklist(result.checklist);
+        setStores(result.stores);
+        setFilters({
+          ...EMPTY_FILTERS,
+          from: result.checklist?.start_date ?? "",
+          to: result.checklist?.end_date ?? "",
+        });
+      })
+      .catch((cause: unknown) => {
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "Unable to load festive checklist.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const reloadOptions = useCallback(() => {
     setLoading(true);
     setError(undefined);
-    try {
-      const result = await loadFestiveHomeOptions();
-      setChecklist(result.checklist);
-      setStores(result.stores);
-      setFilters({
-        ...EMPTY_FILTERS,
-        from: result.checklist?.start_date ?? "",
-        to: result.checklist?.end_date ?? "",
-      });
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Unable to load festive checklist.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    return loadOptions();
+  }, [loadOptions]);
 
   useEffect(() => {
     void loadOptions();
@@ -354,7 +360,7 @@ export default function FestiveHomeRoute() {
                 {error && (
                   <AppButton
                     title="Retry"
-                    onPress={() => void loadOptions()}
+                    onPress={() => void reloadOptions()}
                     disabled={loading}
                   />
                 )}

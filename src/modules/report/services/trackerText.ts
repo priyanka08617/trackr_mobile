@@ -1,4 +1,4 @@
-const MOJIBAKE_REPLACEMENTS: Array<[string, string]> = [
+const MOJIBAKE_REPLACEMENTS: [string, string][] = [
   ["\u00e2\u20ac\u201d", "\u2014"],
   ["\u00e2\u20ac\u201c", "\u2013"],
   ["\u00e2\u20ac\u00a6", "\u2026"],

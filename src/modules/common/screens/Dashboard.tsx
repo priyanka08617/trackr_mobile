@@ -5,7 +5,7 @@ import AreaPage from "@/components/AreaPage";
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
 import { Image } from "expo-image";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import {
   Modal,
   Pressable,
@@ -675,7 +675,6 @@ export default function Dashboard() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
-  const [refreshKey, setRefreshKey] = useState(0);
   const [showAnnouncements, setShowAnnouncements] = useState(false);
 
   /*
@@ -696,7 +695,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     let active = true;
-    loadDashboardSnapshot(EMPTY_DASHBOARD_FILTERS)
+    const controller = new AbortController();
+    loadDashboardSnapshot(EMPTY_DASHBOARD_FILTERS, controller.signal)
       .then((data) => {
         if (active) setSnapshot(data);
       })
@@ -713,41 +713,55 @@ export default function Dashboard() {
       });
     return () => {
       active = false;
+      controller.abort();
     };
-  }, [refreshKey]);
+  }, []);
 
-  const registerKpis =
-    snapshot?.kpis.filter((item) => Number(item.category) === 1) ?? [];
-  const trackerKpis =
-    snapshot?.kpis.filter((item) => Number(item.category) !== 1) ?? [];
-  const currentTrackerWeek =
-    snapshot?.trackerWeeks.find((item) => item.is_live) ??
-    snapshot?.trackerWeeks[snapshot.trackerWeeks.length - 1];
-  const currentRegisterWeek =
-    snapshot?.registerWeeks.find((item) => item.is_live) ??
-    snapshot?.registerWeeks[snapshot.registerWeeks.length - 1];
-  const ytdOpsRows = snapshot?.ytdOps as ScoreRow[] | undefined;
-  const criticalRows = (snapshot?.criticalLocations ?? []).filter(
-    (item): item is ScoreRow => typeof item === "object" && item !== null,
-  );
-  const trackerPoints = (snapshot?.trackerWeeks ?? [])
-    .slice(-6)
-    .map((item) => ({
-      label: item.week_label ?? "Week",
-      value: Number(item.percentage) || 0,
-      count: Number(item.count) || 0,
+  const {
+    registerKpis,
+    trackerKpis,
+    currentTrackerWeek,
+    currentRegisterWeek,
+    ytdOpsRows,
+    criticalRows,
+    trackerPoints,
+    registerPoints,
+    liveEmployeePoints,
+  } = useMemo(() => {
+    const registerKpis =
+      snapshot?.kpis.filter((item) => Number(item.category) === 1) ?? [];
+    const trackerKpis =
+      snapshot?.kpis.filter((item) => Number(item.category) !== 1) ?? [];
+    const currentTrackerWeek =
+      snapshot?.trackerWeeks.find((item) => item.is_live) ??
+      snapshot?.trackerWeeks[snapshot.trackerWeeks.length - 1];
+    const currentRegisterWeek =
+      snapshot?.registerWeeks.find((item) => item.is_live) ??
+      snapshot?.registerWeeks[snapshot.registerWeeks.length - 1];
+    const ytdOpsRows = snapshot?.ytdOps as ScoreRow[] | undefined;
+    const criticalRows = (snapshot?.criticalLocations ?? []).filter(
+      (item): item is ScoreRow => typeof item === "object" && item !== null,
+    );
+    const trackerPoints = (snapshot?.trackerWeeks ?? [])
+      .slice(-6)
+      .map((item) => ({
+        label: item.week_label ?? "Week",
+        value: Number(item.percentage) || 0,
+        count: Number(item.count) || 0,
+      }));
+    const registerPoints = (snapshot?.registerWeeks ?? [])
+      .slice(-6)
+      .map((item) => ({
+        label: item.week_range ?? "Week",
+        value: Number(item.percentage) || 0,
+        count: Number(item.total_entries) || 0,
+      }));
+    const liveEmployeePoints = (snapshot?.liveEmployee ?? []).map((item) => ({
+      label: item.label ?? "Store",
+      value: Number(item.value) || 0,
     }));
-  const registerPoints = (snapshot?.registerWeeks ?? [])
-    .slice(-6)
-    .map((item) => ({
-      label: item.week_range ?? "Week",
-      value: Number(item.percentage) || 0,
-      count: Number(item.total_entries) || 0,
-    }));
-  const liveEmployeePoints = (snapshot?.liveEmployee ?? []).map((item) => ({
-    label: item.label ?? "Store",
-    value: Number(item.value) || 0,
-  }));
+    return { registerKpis, trackerKpis, currentTrackerWeek, currentRegisterWeek, ytdOpsRows, criticalRows, trackerPoints, registerPoints, liveEmployeePoints };
+  }, [snapshot]);
 
   return (
     <AreaPage title="Dashboard">

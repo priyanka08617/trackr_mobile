@@ -3,6 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 import { APP_CONFIG } from "@/constants/config";
+import { parseSessionIdentity, type SessionIdentity } from "@/services/sessionNavigation";
 
 export interface AuthSession {
   accessToken: string;
@@ -10,13 +11,12 @@ export interface AuthSession {
   expiresAt: number;
   companyId: string;
   apiBase: string;
+  identity: SessionIdentity | null;
 }
 
-function read(key: string) {
-  return Platform.OS === "web"
-    ? AsyncStorage.getItem(key)
-    : SecureStore.getItemAsync(key);
-}
+let session: AuthSession | null | undefined = Platform.OS === "web" ? null : undefined;
+let loading: Promise<AuthSession | null> | undefined;
+const tokenPattern = /^[a-f0-9]{64}$/;
 
 function remove(key: string) {
   return Platform.OS === "web"
@@ -24,8 +24,8 @@ function remove(key: string) {
     : SecureStore.deleteItemAsync(key);
 }
 
-export async function readAuthSession(): Promise<AuthSession | null> {
-  const raw = await read(APP_CONFIG.storageKeys.authSession);
+async function readNativeSession(): Promise<AuthSession | null> {
+  const raw = await SecureStore.getItemAsync(APP_CONFIG.storageKeys.authSession);
   if (!raw) return null;
 
   try {
@@ -33,6 +33,8 @@ export async function readAuthSession(): Promise<AuthSession | null> {
     if (
       typeof session?.accessToken !== "string" ||
       typeof session.refreshToken !== "string" ||
+      !tokenPattern.test(session.accessToken) ||
+      !tokenPattern.test(session.refreshToken) ||
       typeof session.expiresAt !== "number" ||
       typeof session.companyId !== "string" ||
       typeof session.apiBase !== "string" ||
@@ -45,29 +47,50 @@ export async function readAuthSession(): Promise<AuthSession | null> {
       expiresAt: session.expiresAt,
       companyId: session.companyId,
       apiBase: session.apiBase,
+      identity: parseSessionIdentity(
+        session.identity?.userId,
+        session.identity?.categoryId,
+        session.identity?.routeGroup,
+      ),
     };
   } catch {
     return null;
   }
 }
 
-export async function getAuthToken(): Promise<string | null> {
-  return (await readAuthSession())?.accessToken ?? null;
+export function readAuthSession(): Promise<AuthSession | null> {
+  if (session !== undefined) return Promise.resolve(session);
+  loading ??= readNativeSession().then((stored) => {
+    if (session === undefined) session = stored;
+    return session;
+  }).finally(() => { loading = undefined; });
+  return loading;
 }
 
-export function saveAuthSession(session: AuthSession): Promise<void> {
-  const key = APP_CONFIG.storageKeys.authSession;
-  const value = JSON.stringify(session);
-  return Platform.OS === "web"
-    ? AsyncStorage.setItem(key, value)
-    : SecureStore.setItemAsync(key, value);
+export async function getAuthToken(): Promise<string | null> {
+  const stored = await readAuthSession();
+  return stored?.identity ? stored.accessToken : null;
+}
+
+export async function saveAuthSession(next: AuthSession): Promise<void> {
+  if (Platform.OS !== "web") {
+    await SecureStore.setItemAsync(APP_CONFIG.storageKeys.authSession, JSON.stringify(next));
+  }
+  session = next;
 }
 
 export async function clearAuthSession(): Promise<void> {
+  session = null;
   await Promise.all([
     remove(APP_CONFIG.storageKeys.authSession),
     clearLegacyAuthTokens(),
   ]);
+}
+
+export async function clearPersistedWebSession(): Promise<void> {
+  if (Platform.OS === "web") {
+    await Promise.all([remove(APP_CONFIG.storageKeys.authSession), clearLegacyAuthTokens()]);
+  }
 }
 
 export async function clearLegacyAuthTokens(): Promise<void> {

@@ -5,7 +5,7 @@ import DynamicDataTable, {
   type DynamicColumn,
   type DynamicTableRow,
 } from "@/components/table/DynamicAutoDataTable";
-import { SPACING } from "@/constants/theme";
+import { COLORS, SPACING } from "@/constants/theme";
 import {
   RefreshControl,
   ScrollView,
@@ -21,19 +21,16 @@ import { AppButton } from "@/components/AppButton";
 import { AppLoader } from "@/components/AppLoader";
 
 import {
-  AreaHeaderBackContext,
+  AreaHeaderBackRegistrationContext,
   AreaHeaderBackVisibleContext,
   AreaHeaderTitleContext,
 } from "@/components/AreaHeaderBackContext";
 
 import AreaIcon from "@/components/AreaIcon";
-import { COLORS } from "@/constants/theme";
 
 import ChecklistDialog, { type ChecklistNotice } from "./ChecklistDialog";
 
 import { useRmChecklistData } from "./DataContext";
-
-const PAGE_SIZE = 50;
 
 export default function ChecklistList() {
   // ============================================
@@ -44,7 +41,7 @@ export default function ChecklistList() {
 
   const setHeaderTitle = useContext(AreaHeaderTitleContext);
 
-  const headerBackHandler = useContext(AreaHeaderBackContext);
+  const registerHeaderBack = useContext(AreaHeaderBackRegistrationContext);
 
   // ============================================
   // DATA CONTEXT
@@ -77,9 +74,7 @@ export default function ChecklistList() {
       router.replace("/area_manager/settings");
     };
 
-    if (headerBackHandler) {
-      headerBackHandler.current = goBack;
-    }
+    const unregister = registerHeaderBack(goBack);
 
     setHeaderBackVisible(true);
     setHeaderTitle("RM Checklist");
@@ -88,11 +83,9 @@ export default function ChecklistList() {
       setHeaderBackVisible(false);
       setHeaderTitle(null);
 
-      if (headerBackHandler?.current === goBack) {
-        headerBackHandler.current = null;
-      }
+      unregister();
     };
-  }, [headerBackHandler, setHeaderBackVisible, setHeaderTitle]);
+  }, [registerHeaderBack, setHeaderBackVisible, setHeaderTitle]);
 
   // ============================================
   // NAVIGATION

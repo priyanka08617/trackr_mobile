@@ -4,7 +4,7 @@ import {
 } from "@bestcoder/react-native-data-table";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 
 import { StyleSheet, Text, View } from "react-native";
 
@@ -61,7 +61,7 @@ type Props = {
 // MAIN COMPONENT
 // ============================================
 
-export default function DynamicDataTable({
+function DynamicDataTable({
   columns,
   data,
 
@@ -97,6 +97,15 @@ export default function DynamicDataTable({
   const [currentPage, setCurrentPage] = useState(1);
 
   const [rowsPerPage, setRowsPerPage] = useState(Math.max(1, pageSize));
+  const [paginationSource, setPaginationSource] = useState({ refreshKey, serverSidePagination });
+
+  if (
+    paginationSource.refreshKey !== refreshKey ||
+    paginationSource.serverSidePagination !== serverSidePagination
+  ) {
+    setPaginationSource({ refreshKey, serverSidePagination });
+    if (!serverSidePagination) setCurrentPage(1);
+  }
 
   // ============================================
   // SEARCHABLE COLUMNS
@@ -176,14 +185,6 @@ export default function DynamicDataTable({
     startIndex,
     rowsPerPage,
   ]);
-
-  // ============================================
-  // RESET PAGE
-  // ============================================
-
-  useEffect(() => {
-    if (!serverSidePagination) setCurrentPage(1);
-  }, [search, selectedColumn, rowsPerPage, refreshKey, serverSidePagination]);
 
   // ============================================
   // TABLE COLUMNS
@@ -360,6 +361,8 @@ export default function DynamicDataTable({
 // ============================================
 // STYLES
 // ============================================
+
+export default memo(DynamicDataTable);
 
 const styles = StyleSheet.create({
   container: {

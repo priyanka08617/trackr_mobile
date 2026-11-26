@@ -382,7 +382,7 @@ export const TRACKER_TABLE_COLUMNS: Record<TrackerId, readonly ReportColumn[]> =
       { data: "division", title: "Division" },
       { data: "barcode", title: "Barcode" },
       { data: "net_qty", title: "Net Quantity" },
-      { data: "month_of_epiry", title: "Expiry Month" },
+      { data: "month_of_expiry", title: "Expiry Month" },
       { data: "date_of_expiry", title: "Expiry Date" },
       ...stages(2),
     ],
