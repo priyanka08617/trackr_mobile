@@ -6,7 +6,7 @@ import { ActivityIndicator } from "react-native";
 import { getSavedCompany } from "../storage/companyStorage";
 
 export default function Index() {
-  const { identity } = useSession();
+  const { identity, ready } = useSession();
   const [destination, setDestination] = useState<"/company" | "/login" | null>(
     null,
   );
@@ -17,8 +17,8 @@ export default function Index() {
       .catch(() => setDestination("/company"));
   }, []);
 
+  if (!ready || !destination) return <ActivityIndicator size="large" />;
   if (identity) return <Redirect href={getSessionDashboard(identity)} />;
-  if (!destination) return <ActivityIndicator size="large" />;
 
   return <Redirect href={destination} />;
 }

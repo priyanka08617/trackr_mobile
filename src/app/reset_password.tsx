@@ -29,8 +29,8 @@ export default function ResetPassword() {
 
   async function submit() {
     if (busy.current) return;
-    if (newPassword.length < 3) {
-      setError("Password must contain at least 3 characters.");
+    if (Array.from(newPassword).length < 15) {
+      setError("Password must contain at least 15 characters.");
       return;
     }
     if (newPassword !== confirmPassword) {
