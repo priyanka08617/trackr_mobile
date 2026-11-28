@@ -716,6 +716,7 @@ export default function Dashboard() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const [refreshKey, setRefreshKey] = useState(0);
   const [showAnnouncements, setShowAnnouncements] = useState(false);
   const [zone, setZone] = useState("");
   const [region, setRegion] = useState("");
@@ -842,6 +843,54 @@ export default function Dashboard() {
 
   return (
     <AreaPage title="Dashboard">
+        <View style={styles.filterPanel}>
+        <View style={styles.filterGrid}>
+          <View style={styles.filterCell}>
+            <SearchSelect
+              label=""
+              value={zone ? [zone] : []}
+              options={[
+                { value: "", label: "All zones" },
+                ...filterOptions.zones.map((value) => ({ value, label: value })),
+              ]}
+              placeholder="All zones"
+              onChange={(value) => {
+                setZone(value[0] ?? "");
+                setRegion("");
+                setStore("");
+              }}
+            />
+          </View>
+          <View style={styles.filterCell}>
+            <SearchSelect
+              label=""
+              value={region ? [region] : []}
+              options={[
+                { value: "", label: "All regions" },
+                ...filterOptions.regions.map((value) => ({ value, label: value })),
+              ]}
+              placeholder="All regions"
+              onChange={(value) => {
+                setRegion(value[0] ?? "");
+                setStore("");
+              }}
+            />
+          </View>
+          <View style={styles.storeFilterCell}>
+            <SearchSelect
+              label=""
+              value={store ? [store] : []}
+              options={[
+                { value: "", label: "All stores" },
+                ...filterOptions.stores.map(({ id, name }) => ({ value: id, label: name })),
+              ]}
+              placeholder="All stores"
+              onChange={(value) => setStore(value[0] ?? "")}
+            />
+          </View>
+        </View>
+        {!!filterError && <Text style={styles.filterError}>{filterError}</Text>}
+      </View>
       {loading && <AppLoader message="Loading dashboard data..." />}
       {error && (
         <View style={styles.errorBox}>
@@ -1304,6 +1353,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
   },
   exceptionVoidGroup: { gap: SPACING.xs },
+  exceptionVoidTable: { width: "100%" },
   exceptionSummary: {
     color: COLORS.textLight,
     fontSize: FONT_SIZE.xs,
