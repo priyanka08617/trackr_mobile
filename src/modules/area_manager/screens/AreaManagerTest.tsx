@@ -20,14 +20,8 @@ export default function AreaManagerTest() {
 
         setTokenStatus(token ? "Token available" : "Token not found");
 
-        console.log("TEST PAGE OPENED");
-        console.log("Company:", savedCompany?.company_name);
-        console.log("Token available:", Boolean(token));
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-
-        setError(message);
-        console.error("TEST PAGE ERROR:", err);
+      } catch {
+        setError("Unable to check the saved session.");
       }
     }
 

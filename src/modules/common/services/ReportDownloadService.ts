@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 
@@ -51,7 +52,7 @@ export async function exportAreaReport(
     for (let attempt = 0; attempt < 2; attempt++) {
       let response: Response;
       try {
-        response = await fetch(ENDPOINT, {
+        response = await fetchWithSession(ENDPOINT, {
           method: "POST",
           cache: "no-store",
           headers: {

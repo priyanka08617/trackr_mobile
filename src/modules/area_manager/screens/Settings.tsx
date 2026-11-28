@@ -1,4 +1,3 @@
-import { StatusBar } from "expo-status-bar";
 import { Alert, FlatList, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -89,23 +88,19 @@ export default function Settings({
 }: SettingsProps) {
   const backHandlerRef = useContext(AreaHeaderBackContext);
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
-  const handleBackPress = onBackPress ?? (() => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/area_manager/dashboard");
-    }
-  });
-
   useEffect(() => {
     if (embedded) return;
+    const handleBackPress = onBackPress ?? (() => {
+      if (router.canGoBack()) router.back();
+      else router.replace("/common/home");
+    });
     if (backHandlerRef) backHandlerRef.current = handleBackPress;
     setBackVisible(true);
     return () => {
       if (backHandlerRef) backHandlerRef.current = null;
       setBackVisible(false);
     };
-  }, [backHandlerRef, embedded, handleBackPress, setBackVisible]);
+  }, [backHandlerRef, embedded, onBackPress, setBackVisible]);
 
   function openCard(card: (typeof SETTINGS_CARDS)[number]) {
     const customOpen = onOpenCard?.[card.id];

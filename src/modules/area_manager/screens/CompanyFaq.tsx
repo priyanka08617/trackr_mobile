@@ -46,9 +46,6 @@ export default function CompanyFaq() {
       controller.abort();
     }, 30000);
 
-    setLoading(true);
-    setError(undefined);
-
     fetchCompanyFaqs(controller.signal)
       .then((items) => {
         if (active) {
@@ -233,6 +230,8 @@ export default function CompanyFaq() {
                 title="Retry"
                 variant="outline"
                 onPress={() => {
+                  setLoading(true);
+                  setError(undefined);
                   setRetryCount((count) => count + 1);
                 }}
               />

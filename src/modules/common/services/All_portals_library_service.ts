@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 import { trackerPlainText } from "./trackerText";
@@ -36,7 +37,7 @@ export async function loadAllPortals(): Promise<PortalItem[]> {
   let body: string;
 
   try {
-    response = await fetch(endpoint, {
+    response = await fetchWithSession(endpoint, {
       method: "GET",
       credentials: "omit",
       headers: {

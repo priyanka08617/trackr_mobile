@@ -1,47 +1,40 @@
-// import * as SplashScreen from "expo-splash-screen";
-// import { useColorScheme } from "react-native";
-
-// // import AppTabs from "@/components/app-tabs";
-
-// SplashScreen.preventAutoHideAsync();
-
-// export default function TabLayout() {
-//   const colorScheme = useColorScheme();
-//   return (
-//     // <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-//     //   <AppTabs />
-//     // </ThemeProvider>
-
-//     <p>Hello Test</p>
-//   );
-// }
-
-// import { Stack } from "expo-router";
-// import * as SplashScreen from "expo-splash-screen";
-// import { useEffect } from "react";
-
-// export default function RootLayout() {
-//   useEffect(() => {
-//     SplashScreen.hideAsync();
-//   }, []);
-
-//   return (
-//     <Stack
-//       screenOptions={{
-//         headerShown: false,
-//       }}
-//     />
-//   );
-// }
-
-import { Stack } from "expo-router";
+import AppVersionGuard from "@/components/AppVersionGuard";
+import { useSession } from "@/hooks/useSession";
+import { canOpenRootScreen, sessionRouteGroups } from "@/services/sessionNavigation";
+import { initializeSession } from "@/services/sessionService";
+import { Redirect, Stack } from "expo-router";
+import { useEffect } from "react";
 
 export default function RootLayout() {
+  const { identity, ready } = useSession();
+
+  useEffect(() => {
+    void initializeSession().catch(() => undefined);
+  }, []);
+
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    />
+    <>
+      <Stack
+        screenOptions={{ headerShown: false }}
+        screenLayout={({ route, children }) =>
+          // Expo Router also discovers screens absent from Stack.Screen declarations.
+          canOpenRootScreen(route.name, ready, identity) ? <>{children}</> : <Redirect href="/" />
+        }
+      >
+        <Stack.Screen name="index" />
+
+        <Stack.Protected guard={ready && identity !== null}>
+          <Stack.Screen name="common" />
+        </Stack.Protected>
+
+        {sessionRouteGroups.map((folder) => (
+          <Stack.Protected key={folder} guard={ready && identity?.routeGroup === folder}>
+            <Stack.Screen name={folder} />
+          </Stack.Protected>
+        ))}
+      </Stack>
+
+      <AppVersionGuard />
+    </>
   );
 }

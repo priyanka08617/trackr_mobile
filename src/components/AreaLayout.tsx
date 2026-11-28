@@ -28,12 +28,13 @@ import {
   FONT_WEIGHT,
   SPACING,
 } from "../constants/theme";
-import { clearAuthToken, clearRefreshToken } from "../storage/authStorage";
-import { clearUser } from "../storage/userStorage";
+import { useSession } from "@/hooks/useSession";
+import { endSession } from "../services/sessionService";
 import { AppButton } from "./AppButton";
 import {
   AreaHeaderActionContext,
   AreaHeaderBackContext,
+  AreaHeaderBackRegistrationContext,
   AreaHeaderBackVisibleContext,
   AreaHeaderTitleContext,
 } from "./AreaHeaderBackContext";
@@ -58,8 +59,19 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 export default function AreaLayout() {
+  const { version } = useSession();
+  return <AreaLayoutContent key={version} />;
+}
+
+function AreaLayoutContent() {
   const pathname = usePathname();
   const formBackHandler = useRef<(() => void) | null>(null);
+  const registerHeaderBack = useCallback((handler: () => void) => {
+    formBackHandler.current = handler;
+    return () => {
+      if (formBackHandler.current === handler) formBackHandler.current = null;
+    };
+  }, []);
   const [menuOpen, setMenuOpen] = useState(false);
   const [headerBackVisible, setHeaderBackVisible] = useState(false);
   const [headerAction, setHeaderAction] = useState<ReactNode>(null);
@@ -87,39 +99,18 @@ export default function AreaLayout() {
     "Track R";
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("en-GB", { hour12: false }); // "13:51:11"
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-GB", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }); // "Monday, 16 November 2026"
-  };
-
   async function logout() {
     if (loggingOut) return;
 
     setLoggingOut(true);
 
     try {
-      await Promise.all([clearAuthToken(), clearRefreshToken(), clearUser()]);
+      await endSession();
 
       setConfirmLogout(false);
       router.replace("/login");
-    } catch (error) {
-      Alert.alert("Logout failed", "Unable to clear local login details.");
+    } catch {
+      Alert.alert("Logout failed", "Unable to complete logout. Please try again.");
     } finally {
       setLoggingOut(false);
     }
@@ -137,8 +128,8 @@ export default function AreaLayout() {
           setUserCategoryName(data.profile.user_category_name || "");
           setProfileName(data.profile.name || data.profile.store_name || "");
         }
-      } catch (error) {
-        console.error("Unable to load user category:", error);
+      } catch {
+        // Profile details are optional for the navigation header.
       }
     };
 
@@ -187,15 +178,17 @@ export default function AreaLayout() {
         </View>
       </SafeAreaView>
       <AreaHeaderBackContext.Provider value={formBackHandler}>
-        <AreaHeaderActionContext.Provider value={setHeaderAction}>
-          <AreaHeaderBackVisibleContext.Provider value={setHeaderBackVisible}>
-            <AreaHeaderTitleContext.Provider value={setHeaderTitle}>
-              <View style={styles.body}>
-                <Slot />
-              </View>
-            </AreaHeaderTitleContext.Provider>
-          </AreaHeaderBackVisibleContext.Provider>
-        </AreaHeaderActionContext.Provider>
+        <AreaHeaderBackRegistrationContext.Provider value={registerHeaderBack}>
+          <AreaHeaderActionContext.Provider value={setHeaderAction}>
+            <AreaHeaderBackVisibleContext.Provider value={setHeaderBackVisible}>
+              <AreaHeaderTitleContext.Provider value={setHeaderTitle}>
+                <View style={styles.body}>
+                  <Slot />
+                </View>
+              </AreaHeaderTitleContext.Provider>
+            </AreaHeaderBackVisibleContext.Provider>
+          </AreaHeaderActionContext.Provider>
+        </AreaHeaderBackRegistrationContext.Provider>
       </AreaHeaderBackContext.Provider>
       {menuOpen && (
         <Modal
@@ -240,12 +233,7 @@ export default function AreaLayout() {
                   </View>
                   <View style={styles.dateTimeSection}>
                     {/* <Text style={styles.userNameText}>User</Text> */}
-                    <Text style={styles.clockText}>
-                      {formatTime(currentTime)}
-                    </Text>
-                    <Text style={styles.dateText}>
-                      {formatDate(currentTime)}
-                    </Text>
+                    <MenuClock />
 
                     <View>
                       <Text style={styles.userNameText}>
@@ -343,6 +331,36 @@ export default function AreaLayout() {
         </View>
       </Modal>
     </View>
+  );
+}
+
+function MenuClock() {
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString("en-GB", { hour12: false }); // "13:51:11"
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }); // "Monday, 16 November 2026"
+  };
+
+  return (
+    <>
+      <Text style={styles.clockText}>{formatTime(currentTime)}</Text>
+      <Text style={styles.dateText}>{formatDate(currentTime)}</Text>
+    </>
   );
 }
 

@@ -1,3 +1,5 @@
+import { fetchWithoutRedirect, getMasterApiBase, getTrustedCompanyApiBase } from "./apiUrlPolicy";
+
 export interface Company {
   company_id: number | string;
   company_name: string;
@@ -6,14 +8,29 @@ export interface Company {
   api_url: string;
 }
 
-export async function findCompany(companyName: string) {
-  const baseUrl = process.env.EXPO_PUBLIC_MASTER_API_URL;
-
-  if (!baseUrl) {
-    throw new Error("Master API URL is not configured");
+export function validateCompany(value: unknown): Company {
+  if (typeof value !== "object" || value === null) throw new Error("Invalid company response.");
+  const data = value as Partial<Company>;
+  const id = data.company_id;
+  if (
+    !((typeof id === "string" && id.trim()) || (typeof id === "number" && Number.isSafeInteger(id))) ||
+    typeof data.company_name !== "string" || !data.company_name.trim()
+  ) {
+    throw new Error("Invalid company response.");
   }
+  return {
+    company_id: id,
+    company_name: data.company_name,
+    company_code: typeof data.company_code === "string" ? data.company_code : "",
+    domain: typeof data.domain === "string" ? data.domain : "",
+    api_url: getTrustedCompanyApiBase(data.api_url),
+  };
+}
 
-  const response = await fetch(`${baseUrl}/company/find_company.php`, {
+export async function findCompany(companyName: string) {
+  const baseUrl = getMasterApiBase();
+
+  const response = await fetchWithoutRedirect(`${baseUrl}/company/find_company.php`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -29,7 +46,7 @@ export async function findCompany(companyName: string) {
     throw new Error(result.message || "Company not found");
   }
 
-  return result.data;
+  return validateCompany(result.data);
 }
 
 // =================================================================

@@ -31,22 +31,28 @@ export default function AllPortals({ onBack }: { onBack: () => void }) {
   const [loadError, setLoadError] = useState("");
   const [linkError, setLinkError] = useState("");
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(() => {
+    return loadAllPortals()
+      .then((result) => {
+        setPortals(result);
+      })
+      .catch((cause: unknown) => {
+        setPortals([]);
+        setLoadError(
+          cause instanceof Error ? cause.message : "Unable to load portals.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const reloadPortals = useCallback(() => {
     setLoading(true);
     setLoadError("");
     setLinkError("");
-
-    try {
-      setPortals(await loadAllPortals());
-    } catch (cause) {
-      setPortals([]);
-      setLoadError(
-        cause instanceof Error ? cause.message : "Unable to load portals.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    return refresh();
+  }, [refresh]);
 
   useEffect(() => {
     if (backHandlerRef) {
@@ -132,7 +138,7 @@ export default function AllPortals({ onBack }: { onBack: () => void }) {
                 <Text accessibilityRole="alert" style={styles.error}>
                   {loadError}
                 </Text>
-                <AppButton title="Try again" onPress={() => void refresh()} />
+                <AppButton title="Try again" onPress={() => void reloadPortals()} />
               </>
             ) : (
               <Text style={styles.emptyText}>No portals available.</Text>

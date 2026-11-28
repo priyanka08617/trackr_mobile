@@ -1,0 +1,31 @@
+{
+  "cli": {
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "environment": "development",
+      "env": { "TRACKR_REQUIRE_BUILD_CONFIG": "1", "EXPO_NO_DOTENV": "1" },
+      "android": { "gradleCommand": ":app:assembleDebug", "withoutCredentials": true }
+    },
+    "development-simulator": {
+      "extends": "development",
+      "ios": { "simulator": true }
+    },
+    "preview": {
+      "distribution": "internal",
+      "environment": "preview",
+      "env": { "TRACKR_REQUIRE_BUILD_CONFIG": "1", "TRACKR_RELEASE_BINARY": "1", "EXPO_NO_DOTENV": "1" },
+      "android": { "buildType": "apk" }
+    },
+    "production": {
+      "distribution": "store",
+      "environment": "production",
+      "autoIncrement": true,
+      "env": { "TRACKR_REQUIRE_BUILD_CONFIG": "1", "TRACKR_RELEASE_BINARY": "1", "EXPO_NO_DOTENV": "1" },
+      "android": { "buildType": "app-bundle" }
+    }
+  }
+}

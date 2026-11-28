@@ -1,5 +1,10 @@
+import { APP_CONFIG } from "@/constants/config";
+import { readApiJson } from "@/services/apiResponse";
+import { fetchWithSession, getSessionSnapshot, subscribeSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
+
+export { readApiJson };
 
 // ==============================================
 // ACCESS TOKEN
@@ -138,55 +143,24 @@ export interface DashboardSnapshot {
 }
 
 // ==============================================
-// READ API JSON RESPONSE
-// ==============================================
-
-export async function readApiJson(
-  response: Response,
-  requestName: string,
-): Promise<unknown> {
-  const body = await response.text();
-
-  try {
-    return body ? JSON.parse(body) : null;
-  } catch {
-    const isLoginHtml =
-      response.redirected ||
-      response.headers
-        .get("content-type")
-        ?.toLowerCase()
-        .includes("text/html") ||
-      /<!doctype\s+html|<html\b/i.test(body);
-
-    if (isLoginHtml) {
-      throw new Error(
-        `${requestName} returned an HTML page instead of JSON. Check the API endpoint and server authentication configuration.`,
-      );
-    }
-
-    throw new Error(`${requestName} returned invalid JSON.`);
-  }
-}
-
-// ==============================================
 // DASHBOARD CATEGORY API
 // ==============================================
 
 async function postCategory<T>(
   category_type: string,
   filters: DashboardFilters,
+  baseUrl: string,
+  signal: AbortSignal,
 ): Promise<T> {
-  const baseUrl = await getDashboardBaseUrl();
   const endpoint = `${baseUrl}/common/dashboard_api.php`;
-  const token = await getAccessToken();
 
-  const response = await fetch(endpoint, {
+  const response = await fetchWithSession(endpoint, {
     method: "POST",
+    signal,
 
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
 
     body: JSON.stringify({
@@ -217,11 +191,13 @@ async function postCategory<T>(
 
 async function safeCategory<T>(
   category_type: string,
-  filters: DashboardFilters = {},
+  filters: DashboardFilters,
+  baseUrl: string,
+  signal: AbortSignal,
 ): Promise<{ value?: T; error?: string }> {
   try {
     return {
-      value: await postCategory<T>(category_type, filters),
+      value: await postCategory<T>(category_type, filters, baseUrl, signal),
     };
   } catch (cause) {
     return {
@@ -281,7 +257,7 @@ export async function loadDashboardFilterOptions(
     ? `${zoneFiltersEndpoint}?${queryString}`
     : zoneFiltersEndpoint;
 
-  const response = await fetch(url, {
+  const response = await fetchWithSession(url, {
     method: "GET",
 
     headers: {
@@ -338,8 +314,10 @@ export async function loadDashboardFilterOptions(
 // LOAD COMPLETE DASHBOARD SNAPSHOT
 // ==============================================
 
-export async function loadDashboardSnapshot(
-  filters: DashboardFilters = {},
+async function loadSnapshot(
+  filters: DashboardFilters,
+  baseUrl: string,
+  signal: AbortSignal,
 ): Promise<DashboardSnapshot> {
   const [
     announcementResult,
@@ -356,48 +334,48 @@ export async function loadDashboardSnapshot(
   ] = await Promise.all([
     safeCategory<{
       announcements?: DashboardAnnouncement[];
-    }>("announcement", filters),
+    }>("announcement", filters, baseUrl, signal),
 
     safeCategory<{
       data?: StoreActivityData;
-    }>("store_activity_today_percent", filters),
+    }>("store_activity_today_percent", filters, baseUrl, signal),
 
     safeCategory<{
       data?: LiveEmployeeRow[];
-    }>("live_employee", filters),
+    }>("live_employee", filters, baseUrl, signal),
 
     safeCategory<{
       data?: DashboardKpiRow[];
-    }>("fetch_register_kpi", filters),
+    }>("fetch_register_kpi", filters, baseUrl, signal),
 
     safeCategory<{
       data?: WeeklyTrackerRow[];
       total_trackers?: number;
-    }>("trackr_weekly_fill", filters),
+    }>("trackr_weekly_fill", filters, baseUrl, signal),
 
     safeCategory<{
       data?: WeeklyTrackerRow[];
       total_registers?: number;
-    }>("weekly_register_tracker", filters),
+    }>("weekly_register_tracker", filters, baseUrl, signal),
 
     safeCategory<{
       data?: Record<string, DashboardException>;
-    }>("exception_window", filters),
+    }>("exception_window", filters, baseUrl, signal),
 
     safeCategory<{
       success?: boolean;
       data?: DashboardExceptionVoidData;
-    }>("exception_void", filters),
+    }>("exception_void", filters, baseUrl, signal),
 
-    safeCategory<YtdChartRow[]>("ytd_chart", filters),
+    safeCategory<YtdChartRow[]>("ytd_chart", filters, baseUrl, signal),
 
     safeCategory<{
       data?: YtdOpsRow[];
-    }>("ytd_ops_dashboard", filters),
+    }>("ytd_ops_dashboard", filters, baseUrl, signal),
 
     safeCategory<{
       data?: unknown[];
-    }>("critical_indicator_dashboard", filters),
+    }>("critical_indicator_dashboard", filters, baseUrl, signal),
   ]);
 
 
@@ -444,4 +422,29 @@ export async function loadDashboardSnapshot(
     criticalLocations: responseRows(criticalResult.value),
     warnings,
   };
+}
+
+export async function loadDashboardSnapshot(
+  filters: DashboardFilters = {},
+  signal?: AbortSignal,
+): Promise<DashboardSnapshot> {
+  const scope = getSessionSnapshot();
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  const unsubscribe = subscribeSession(abort);
+  if (signal?.aborted) abort();
+  else signal?.addEventListener("abort", abort);
+  const timeout = setTimeout(abort, APP_CONFIG.requestTimeout);
+
+  try {
+    const baseUrl = await getDashboardBaseUrl();
+    if (controller.signal.aborted || scope !== getSessionSnapshot()) throw new Error("Dashboard request cancelled.");
+    const result = await loadSnapshot(filters, baseUrl, controller.signal);
+    if (scope !== getSessionSnapshot()) throw new Error("Login session changed. Please try again.");
+    return result;
+  } finally {
+    clearTimeout(timeout);
+    unsubscribe();
+    signal?.removeEventListener("abort", abort);
+  }
 }

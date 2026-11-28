@@ -49,29 +49,34 @@ export default function ReportBank({ onBack }: { onBack: () => void }) {
   const [loadError, setLoadError] = useState("");
   const [linkError, setLinkError] = useState("");
 
-  const loadReports = useCallback(async (isRefresh = false) => {
+  const loadReports = useCallback(() => {
+    return getSavedCompany().then(async (company) => {
+      const apiUrl = company?.api_url?.trim();
+      const origin = apiUrl ? new URL(apiUrl).origin : "";
+      return { origin, reports: await loadReportBank() };
+    })
+      .then(({ origin, reports }) => {
+        setCompanyOrigin(origin);
+        setReports(reports);
+      })
+      .catch((cause: unknown) => {
+        setLoadError(
+          cause instanceof Error ? cause.message : "Unable to load reports.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
+  }, []);
+
+  const reloadReports = useCallback((isRefresh = false) => {
     setLoading(!isRefresh);
     setRefreshing(isRefresh);
     setLoadError("");
     setLinkError("");
-
-    try {
-      const company = await getSavedCompany();
-      const apiUrl = company?.api_url?.trim();
-      const origin = apiUrl ? new URL(apiUrl).origin : "";
-
-      const result = await loadReportBank();
-      setCompanyOrigin(origin);
-      setReports(result);
-    } catch (cause) {
-      setLoadError(
-        cause instanceof Error ? cause.message : "Unable to load reports.",
-      );
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+    return loadReports();
+  }, [loadReports]);
 
   useEffect(() => {
     if (backHandlerRef) {
@@ -184,7 +189,7 @@ export default function ReportBank({ onBack }: { onBack: () => void }) {
             <Text accessibilityRole="alert" style={styles.error}>
               {loadError}
             </Text>
-            <AppButton title="Try again" onPress={() => void loadReports()} />
+            <AppButton title="Try again" onPress={() => void reloadReports()} />
           </>
         ) : null}
 
@@ -211,7 +216,7 @@ export default function ReportBank({ onBack }: { onBack: () => void }) {
             columns={COLUMNS}
             rows={rows}
             refreshing={refreshing}
-            onRefresh={() => void loadReports(true)}
+            onRefresh={() => void reloadReports(true)}
             empty={
               loadError
                 ? "Unable to load reports."

@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 
@@ -84,7 +85,7 @@ export async function planRequest<T>(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
   try {
-    const response = await fetch(url.toString(), {
+    const response = await fetchWithSession(url.toString(), {
       method: body === undefined ? "GET" : "POST",
       cache: "no-store",
       headers: {

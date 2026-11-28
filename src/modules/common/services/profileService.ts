@@ -1,3 +1,5 @@
+import { APP_CONFIG } from "@/constants/config";
+import { fetchWithSession, getSessionSnapshot, subscribeSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 import { trackerPlainText } from "./trackerText";
@@ -47,7 +49,7 @@ interface ProfileApiResponse {
 // LOAD PROFILE
 // ============================================
 
-export async function getUserProfile(): Promise<ProfileData> {
+async function fetchUserProfile(scope: ReturnType<typeof getSessionSnapshot>): Promise<ProfileData> {
   const company = await getSavedCompany();
   const baseUrl = company?.api_url?.trim().replace(/\/+$/, "");
 
@@ -60,6 +62,7 @@ export async function getUserProfile(): Promise<ProfileData> {
   if (!token) {
     throw new Error("Please log in to view your profile.");
   }
+  if (scope !== getSessionSnapshot()) throw new Error("Login session changed. Please try again.");
 
   // The company API URL already ends in /api/v1.
   const endpoint = `${baseUrl}/common/profile.php`;
@@ -71,9 +74,13 @@ export async function getUserProfile(): Promise<ProfileData> {
   // API REQUEST
   // ==========================================
 
+  const controller = new AbortController();
+  const unsubscribe = subscribeSession(() => controller.abort());
+  const timeout = setTimeout(() => controller.abort(), APP_CONFIG.requestTimeout);
   try {
-    response = await fetch(endpoint, {
+    response = await fetchWithSession(endpoint, {
       method: "GET",
+      signal: controller.signal,
       cache: "no-store",
       credentials: "omit",
       headers: {
@@ -85,6 +92,9 @@ export async function getUserProfile(): Promise<ProfileData> {
     body = await response.text();
   } catch {
     throw new Error("Could not reach the Profile API.");
+  } finally {
+    clearTimeout(timeout);
+    unsubscribe();
   }
 
   // ==========================================
@@ -178,4 +188,19 @@ export async function getUserProfile(): Promise<ProfileData> {
       store_code: trackerPlainText(profile.store_code ?? ""),
     },
   };
+}
+
+let pendingProfile: Promise<ProfileData> | undefined;
+subscribeSession(() => { pendingProfile = undefined; });
+
+export function getUserProfile(): Promise<ProfileData> {
+  const scope = getSessionSnapshot();
+  if (!scope.identity) return Promise.reject(new Error("Please log in to view your profile."));
+  pendingProfile ??= fetchUserProfile(scope).then((profile) => {
+    if (scope !== getSessionSnapshot()) throw new Error("Login session changed. Please try again.");
+    return profile;
+  }).finally(() => {
+    if (scope === getSessionSnapshot()) pendingProfile = undefined;
+  });
+  return pendingProfile;
 }

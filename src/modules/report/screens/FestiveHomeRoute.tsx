@@ -8,7 +8,7 @@ import DateField from "@/components/DateField";
 import SelectField from "@/components/SelectField";
 import DataTable from "@/components/Table";
 import { COLORS, FONT_SIZE, SPACING } from "@/constants/theme";
-import { Directory, File, Paths } from "expo-file-system";
+import { saveNativeReportCsv } from "@/modules/report/services/saveNativeReportCsv";
 import { router } from "expo-router";
 import {
   useCallback,
@@ -72,28 +72,34 @@ export default function FestiveHomeRoute() {
   const backHandlerRef = useContext(AreaHeaderBackContext);
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
 
-  const loadOptions = useCallback(async () => {
+  const loadOptions = useCallback(() => {
+    return loadFestiveHomeOptions()
+      .then((result) => {
+        setChecklist(result.checklist);
+        setStores(result.stores);
+        setFilters({
+          ...EMPTY_FILTERS,
+          from: result.checklist?.start_date ?? "",
+          to: result.checklist?.end_date ?? "",
+        });
+      })
+      .catch((cause: unknown) => {
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "Unable to load festive checklist.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const reloadOptions = useCallback(() => {
     setLoading(true);
     setError(undefined);
-    try {
-      const result = await loadFestiveHomeOptions();
-      setChecklist(result.checklist);
-      setStores(result.stores);
-      setFilters({
-        ...EMPTY_FILTERS,
-        from: result.checklist?.start_date ?? "",
-        to: result.checklist?.end_date ?? "",
-      });
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Unable to load festive checklist.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    return loadOptions();
+  }, [loadOptions]);
 
   useEffect(() => {
     void loadOptions();
@@ -197,17 +203,8 @@ export default function FestiveHomeRoute() {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         setMessage(`Downloaded ${filename}.`);
       } else {
-        let file: File;
-        if (Platform.OS === "android") {
-          const directory = await Directory.pickDirectoryAsync();
-          if (!directory) return;
-          file = directory.createFile(filename, "text/csv");
-        } else {
-          file = new File(Paths.document, filename);
-          file.create({ overwrite: true });
-        }
-        file.write(prepareReportCsv(csv));
-        setMessage(`Saved ${filename}.`);
+        const saved = await saveNativeReportCsv(csv, filename);
+        if (saved) setMessage(saved);
       }
     } catch (cause) {
       if (!isPickerCancellation(cause))
@@ -354,7 +351,7 @@ export default function FestiveHomeRoute() {
                 {error && (
                   <AppButton
                     title="Retry"
-                    onPress={() => void loadOptions()}
+                    onPress={() => void reloadOptions()}
                     disabled={loading}
                   />
                 )}
