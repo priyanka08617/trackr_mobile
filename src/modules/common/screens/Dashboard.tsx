@@ -19,8 +19,10 @@ import {
   type DashboardFilters,
   type DashboardSnapshot,
 } from "../services/DashboardService";
+import SearchSelect from "@/components/SearchSelect";
+import { loadLocationFilterOptions } from "@/modules/report/services/locationFilters";
 
-const EMPTY_DASHBOARD_FILTERS: DashboardFilters = {};
+// const EMPTY_DASHBOARD_FILTERS: DashboardFilters = {};
 
 function DashboardPanel({
   title,
@@ -117,19 +119,40 @@ function ExceptionTable({ items }: { items: DashboardSnapshot["exceptions"] }) {
   const festiveStartIndex = rows.findIndex(([name]) =>
     normalizeName(name).startsWith("ugadi & eid checklist"),
   );
-  const pendingOmniIndex = rows.findIndex(([name]) =>
-    /pending.*(?:online|omni|om).*return/i.test(normalizeName(name)),
+  // const pendingOmniIndex = rows.findIndex(([name]) =>
+  //   /pending.*(?:online|omni|om).*return/i.test(normalizeName(name)),
+  // );
+
+const pendingOmniIndex = rows.findIndex(([name]) =>
+    /(?:pending.*(?:online|omni|om).*return|(?:online|omni|om).*return.*pending)/i.test(
+      normalizeName(name),
+    ),
   );
+
   const categoryForRow = (
     name: string,
     values: DashboardSnapshot["exceptions"][string],
     index: number,
   ) => {
+
+
+    // const normalizedName = normalizeName(name);
+    // if (/pending.*(?:online|omni|om).*return/i.test(normalizedName)) return 5;
+ 
+
     const normalizedName = normalizeName(name);
-    if (/pending.*(?:online|omni|om).*return/i.test(normalizedName)) return 5;
-    const suppliedCategory = Number(
+    if (
+      /(?:pending.*(?:online|omni|om).*return|(?:online|omni|om).*return.*pending)/i.test(
+        normalizedName,
+      )   
+    )
+      return 5;
+
+
+   const suppliedCategory = Number(
       values.register_category ?? values.category,
     );
+
     if (Number.isFinite(suppliedCategory) && suppliedCategory > 0) {
       return [1, 2, 3, 5].includes(suppliedCategory) ? suppliedCategory : 1;
     }
@@ -263,27 +286,44 @@ function ExceptionVoidTable({
     return !Number.isFinite(category) || category === 1;
   });
   if (!rows.length) return <DataPlaceholder text="No void data available" />;
-  const columns = [
-    { key: "register_name", label: "Register", width: 150 },
-    { key: "total", label: "Total", width: 78 },
-    { key: "pending", label: "Pending", width: 82 },
-    { key: "void", label: "Void", width: 76 },
+
+  // const columns = [
+  //   { key: "register_name", label: "Register", width: 150 },
+  //   { key: "total", label: "Total", width: 78 },
+  //   { key: "pending", label: "Pending", width: 82 },
+  //   { key: "void", label: "Void", width: 76 },
+  // ] as const;
+
+const columns = [
+    { key: "register_name", label: "Register", flex: 2.2 },
+    { key: "total", label: "Total", flex: 1 },
+    { key: "pending", label: "Pending", flex: 1 },
+    { key: "void", label: "Void", flex: 1 },
   ] as const;
+
   return (
     <View style={styles.exceptionVoidGroup}>
       <Text style={styles.exceptionSummary}>Overall total: {grandTotal}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator>
-        <View>
+
+      {/* <ScrollView horizontal  showsHorizontalScrollIndicator> */}
+        {/* <View> */}
+          <View style={styles.exceptionVoidTable}>
+
           <View style={styles.exceptionTableRow}>
             {columns.map((column) => (
               <Text
                 key={column.key}
-                style={[styles.exceptionTableHeader, { width: column.width }]}
+                // style={[styles.exceptionTableHeader, { width: column.width }]}
+
+                style={[styles.exceptionTableHeader, { flex: column.flex }]}
               >
                 {column.label}
               </Text>
             ))}
           </View>
+
+
+
           {rows.map(([id, item], index) => (
             <View
               key={id}
@@ -298,7 +338,8 @@ function ExceptionVoidTable({
                   numberOfLines={2}
                   style={[
                     styles.exceptionTableCell,
-                    { width: column.width },
+                    // { width: column.width },
+                    { flex: column.flex },
                     column.key === "register_name" && styles.exceptionName,
                   ]}
                 >
@@ -310,7 +351,7 @@ function ExceptionVoidTable({
             </View>
           ))}
         </View>
-      </ScrollView>
+      {/* </ScrollView> */}
     </View>
   );
 }
@@ -676,6 +717,39 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [showAnnouncements, setShowAnnouncements] = useState(false);
+  const [zone, setZone] = useState("");
+  const [region, setRegion] = useState("");
+  const [store, setStore] = useState("");
+  const [filterOptions, setFilterOptions] = useState({
+    zones: [] as string[],
+    regions: [] as string[],
+    stores: [] as { id: string; name: string }[],
+  });
+  const [filterError, setFilterError] = useState<string>();
+  const filters: DashboardFilters = { zone, region, store };
+
+    useEffect(() => {
+    let active = true;
+    loadLocationFilterOptions(region, zone)
+      .then((options) => {
+        if (!active) return;
+        setFilterOptions(options);
+        setFilterError(undefined);
+        if (store && !options.stores.some((option) => option.id === store))
+          setStore("");
+      })
+      .catch((cause) => {
+        if (active)
+          setFilterError(
+            cause instanceof Error
+              ? cause.message
+              : "Unable to load zone, region, and store filters.",
+          );
+      });
+    return () => {
+      active = false;
+    };
+  }, [region, zone, store]);
 
   /*
    * Temporarily disabled until the updated AJAX API is available.
@@ -696,7 +770,10 @@ export default function Dashboard() {
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
-    loadDashboardSnapshot(EMPTY_DASHBOARD_FILTERS, controller.signal)
+    // loadDashboardSnapshot(EMPTY_DASHBOARD_FILTERS, controller.signal)
+    setLoading(true);
+    setError(undefined);
+    loadDashboardSnapshot(filters)
       .then((data) => {
         if (active) setSnapshot(data);
       })
@@ -715,7 +792,7 @@ export default function Dashboard() {
       active = false;
       controller.abort();
     };
-  }, []);
+  }, [refreshKey, zone, region, store]);
 
   const {
     registerKpis,

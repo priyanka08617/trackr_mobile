@@ -1,7 +1,6 @@
-import { Directory, File, Paths } from "expo-file-system";
+import { saveNativeReportCsv } from "@/modules/report/services/saveNativeReportCsv";
 import { Platform } from "react-native";
 import { prepareReportCsv } from "../../report/services/reportCsv";
-import { isPickerCancellation } from "../../report/services/trackerText";
 import { exportAreaReport } from "../services/ReportDownloadService";
 import Reports from "./Reports";
 
@@ -24,24 +23,7 @@ async function downloadReport(
     return;
   }
 
-  let file: File;
-  if (Platform.OS === "android") {
-    let destination: Directory;
-    try {
-      destination = await Directory.pickDirectoryAsync();
-    } catch (cause) {
-      if (isPickerCancellation(cause)) return;
-      throw cause;
-    }
-    if (!destination) return;
-    file = destination.createFile(filename, "text/comma-separated-values");
-  } else {
-    file = new File(Paths.document, filename);
-    file.create({ overwrite: true });
-  }
-
-  file.write(prepareReportCsv(csv));
-  if (!file.exists) throw new Error("The CSV file was not created.");
+  await saveNativeReportCsv(csv, filename);
 }
 
 export default function ReportRoute() {

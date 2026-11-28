@@ -10,7 +10,7 @@ import DateField from "@/components/DateField";
 import DynamicDataTable from "@/components/table/DynamicAutoDataTable";
 
 import { COLORS, FONT_SIZE, SPACING } from "@/constants/theme";
-import { Directory, File, Paths } from "expo-file-system";
+import { saveNativeReportCsv } from "@/modules/report/services/saveNativeReportCsv";
 import { router } from "expo-router";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
@@ -40,7 +40,6 @@ import {
   type TrackerLink,
   type TrackerReportRow,
 } from "../services/AllTrackersService";
-import { isPickerCancellation } from "../services/trackerText";
 import { usePagination } from "../services/usePagination";
 
 const PAGE_SIZE = 50;
@@ -352,24 +351,8 @@ export function TrackerReport({ tracker }: { tracker: TrackerLink }) {
         return;
       }
 
-      let file: File;
-      if (Platform.OS === "android") {
-        let directory: Directory;
-        try {
-          directory = await Directory.pickDirectoryAsync();
-        } catch (pickerError) {
-          if (isPickerCancellation(pickerError)) return;
-          throw pickerError;
-        }
-        if (!directory) return;
-        file = directory.createFile(filename, "text/comma-separated-values");
-      } else {
-        file = new File(Paths.document, filename);
-        file.create({ overwrite: true });
-      }
-      file.write(prepareReportCsv(csv));
-      if (!file.exists) throw new Error("The export file was not saved.");
-      setExportMessage(`Saved ${filename}.`);
+      const message = await saveNativeReportCsv(csv, filename);
+      if (message) setExportMessage(message);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
       setError(`CSV export failed: ${message}`);

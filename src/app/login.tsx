@@ -125,11 +125,14 @@ export default function LoginScreen() {
       />
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+          automaticallyAdjustKeyboardInsets
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
             <Image
@@ -254,7 +257,15 @@ export default function LoginScreen() {
             />
           </View>
 
-          <Text style={styles.footer}>Powered by Askforsolutions</Text>
+          {/* <Text style={styles.footer}>Designed & Developed by Ask-For</Text> */}
+
+           <Text style={styles.footer}>
+                      <Text style={styles.footerCredit}>Designed &amp; Developed by </Text>
+                      <Text style={styles.footerBrand}>ASK-FOR</Text>
+                    </Text>
+
+
+                    
         </ScrollView>
       </KeyboardAvoidingView>
       <Modal
@@ -380,6 +391,7 @@ const styles = StyleSheet.create({
   },
   inputText: {
     fontWeight: FONT_WEIGHT.semibold,
+    height: 48,
   },
   passwordGroup: {
     position: "relative",
@@ -413,19 +425,44 @@ const styles = StyleSheet.create({
   },
   signInButton: {
     marginBottom: SPACING.xl,
+    height: 48,
   },
-  footer: {
+
+  // ===========================================================
+  // footer: {
+  //   marginTop: "auto",
+  //   paddingTop: SPACING.xl,
+  //   paddingBottom: SPACING.lg,
+  //   paddingHorizontal:SPACING.md,
+  //   color: COLORS.primary,
+  //   fontSize: 12,
+  //   fontWeight: FONT_WEIGHT.bold,
+  //   textAlign: "right",
+  //   fontStyle:"italic",
+  //   // AlignSelf: "Stretch",
+  // },
+
+
+    footer: {
     marginTop: "auto",
-    paddingTop: SPACING.xl,
-    paddingBottom: SPACING.lg,
+    marginBottom: SPACING.xl,
     paddingHorizontal:SPACING.md,
-    color: COLORS.primary,
-    fontSize: 12,
-    fontWeight: FONT_WEIGHT.bold,
     textAlign: "right",
-    fontStyle:"italic",
-    // AlignSelf: "Stretch",
+    fontSize: 12,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.primary,
   },
+  footerCredit: {
+    fontStyle: "italic",
+    fontWeight: FONT_WEIGHT.semibold,
+  },
+  footerBrand: {
+    fontStyle: "normal",
+    fontWeight: FONT_WEIGHT.bold,
+  },
+
+
+  // =====================================================
   modalOverlay: {
     flex: 1,
     alignItems: "center",

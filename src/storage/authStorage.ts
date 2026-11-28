@@ -74,7 +74,9 @@ export async function getAuthToken(): Promise<string | null> {
 
 export async function saveAuthSession(next: AuthSession): Promise<void> {
   if (Platform.OS !== "web") {
-    await SecureStore.setItemAsync(APP_CONFIG.storageKeys.authSession, JSON.stringify(next));
+    await SecureStore.setItemAsync(APP_CONFIG.storageKeys.authSession, JSON.stringify(next), {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
   }
   session = next;
 }

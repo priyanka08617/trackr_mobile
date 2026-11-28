@@ -7,7 +7,7 @@ import {
 import DateField from "@/components/DateField";
 import DataTable from "@/components/Table";
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
-import { Directory, File, Paths } from "expo-file-system";
+import { saveNativeReportCsv } from "@/modules/report/services/saveNativeReportCsv";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -27,7 +27,6 @@ import {
 } from "../services/OmniReturnService";
 import { prepareReportCsv } from "../services/reportCsv";
 
-import { isPickerCancellation } from "../services/trackerText";
 
 const PAGE_SIZE = 50;
 const NO_DATE_RANGE = { from: "", to: "" };
@@ -262,36 +261,8 @@ export default function AllOmniReturns({ onBack }: { onBack: () => void }) {
         return;
       }
 
-      let file: File;
-      if (Platform.OS === "android") {
-        let picked: unknown;
-        try {
-          picked = await Directory.pickDirectoryAsync();
-        } catch (pickerError) {
-          if (isPickerCancellation(pickerError)) return;
-          throw pickerError;
-        }
-        const destination =
-          picked && typeof picked === "object" && "result" in picked
-            ? picked.result
-            : picked;
-
-        if (!destination) return;
-        if (!(destination instanceof Directory)) {
-          throw new Error("Could not access the selected folder.");
-        }
-        file = destination.createFile(filename, "text/csv");
-      } else {
-        file = new File(Paths.document, filename);
-        file.create({ overwrite: true });
-      }
-      await file.write(prepareReportCsv(csv));
-      if (!file.exists) throw new Error("The CSV file was not created.");
-      setExportMessage(
-        Platform.OS === "android"
-          ? `Saved ${filename} to the selected folder.`
-          : `Saved ${filename} in the app's Documents folder.`,
-      );
+      const message = await saveNativeReportCsv(csv, filename);
+      if (message) setExportMessage(message);
     } catch (cause) {
       setExportMessage(
         cause instanceof Error

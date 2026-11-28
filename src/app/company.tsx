@@ -4,6 +4,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -73,52 +74,58 @@ export default function CompanyScreen() {
         style={styles.contentContainer}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View style={styles.header}>
-          <Image
-            accessibilityLabel="TrackR Fox Logo"
-            source={require("../../assets/images/logo/fox.svg")}
-            contentFit="contain"
-            style={styles.foxLogo}
-          />
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <View style={styles.header}>
+            <Image
+              accessibilityLabel="TrackR Fox Logo"
+              source={require("../../assets/images/logo/fox.svg")}
+              contentFit="contain"
+              style={styles.foxLogo}
+            />
 
-          <Image
-            accessibilityLabel="TrackR Logo"
-            source={require("../../assets/images/logo/logo.svg")}
-            contentFit="contain"
-            style={styles.logo}
-          />
+            <Image
+              accessibilityLabel="TrackR Logo"
+              source={require("../../assets/images/logo/logo.svg")}
+              contentFit="contain"
+              style={styles.logo}
+            />
 
-          {/* <Text style={styles.subtitle}>Enterprise Management</Text> */}
-        </View>
+            {/* <Text style={styles.subtitle}>Enterprise Management</Text> */}
+          </View>
 
-        <View style={styles.form}>
-          <Text style={styles.heading}>Welcome to TrackR</Text>
+          <View style={styles.form}>
+            <Text style={styles.heading}>Welcome to TrackR</Text>
 
-          <Text style={styles.description}>
-            Enter your company name to continue.
+            <Text style={styles.description}>
+              Enter your company name to continue.
+            </Text>
+
+            <Text style={styles.label}>Company Name</Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Enter company name"
+              placeholderTextColor={COLORS.placeholder}
+              value={companyName}
+              onChangeText={setCompanyName}
+              autoCapitalize="words"
+              autoCorrect={false}
+              editable={!loading}
+            />
+
+            <AppButton
+              title="Continue"
+              onPress={handleContinue}
+              loading={loading}
+              style={styles.continueButton}
+            />
+          </View>
+
+          <Text style={styles.footer}>
+            <Text style={styles.footerCredit}>Designed &amp; Developed by </Text>
+            <Text style={styles.footerBrand}>ASK-FOR</Text>
           </Text>
-
-          <Text style={styles.label}>Company Name</Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Enter company name"
-            placeholderTextColor={COLORS.placeholder}
-            value={companyName}
-            onChangeText={setCompanyName}
-            autoCapitalize="words"
-            autoCorrect={false}
-            editable={!loading}
-          />
-
-          <AppButton
-            title="Continue"
-            onPress={handleContinue}
-            loading={loading}
-          />
-        </View>
-
-        <Text style={styles.footer}>Powered by TrackR</Text>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -134,6 +141,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "transparent",
   },
+
+  scrollContent: { flexGrow: 1 },
 
   backgroundImage: {
     position: "absolute",
@@ -192,6 +201,7 @@ const styles = StyleSheet.create({
     fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.text,
     marginBottom: SPACING.sm,
+    
   },
 
   input: {
@@ -206,12 +216,25 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
 
+  continueButton: {
+    height: 48,
+  },
+
   footer: {
     marginTop: "auto",
     marginBottom: SPACING.xl,
-    textAlign: "center",
-    fontSize: FONT_SIZE.sm,
+    paddingHorizontal:SPACING.md,
+    textAlign: "right",
+    fontSize: 12,
     fontWeight: FONT_WEIGHT.semibold,
     color: COLORS.primary,
+  },
+  footerCredit: {
+    fontStyle: "italic",
+    fontWeight: FONT_WEIGHT.semibold,
+  },
+  footerBrand: {
+    fontStyle: "normal",
+    fontWeight: FONT_WEIGHT.bold,
   },
 });

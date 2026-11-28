@@ -8,7 +8,7 @@ import {
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Platform, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { RecoveryForm } from "@/components/RecoveryForm";
 
 export default function ResetPassword() {
   const [newPassword, setNewPassword] = useState("");
@@ -24,7 +24,7 @@ export default function ResetPassword() {
 
   function goLogin() {
     clearPasswordRecovery();
-    router.replace("/login");
+    router.dismissTo("/login");
   }
 
   async function submit() {
@@ -66,7 +66,7 @@ export default function ResetPassword() {
   if (!allowed) return null;
 
   return (
-    <SafeAreaView style={styles.page}>
+    <RecoveryForm>
       <View style={styles.card}>
         <Text style={styles.title}>Reset Password</Text>
         <Text style={styles.description}>Enter your new password.</Text>
@@ -101,18 +101,11 @@ export default function ResetPassword() {
           disabled={loading}
         />
       </View>
-    </SafeAreaView>
+    </RecoveryForm>
   );
 }
 
 const styles = StyleSheet.create({
-  page: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: "#F8FAFC",
-  },
   card: {
     width: "100%",
     maxWidth: 440,

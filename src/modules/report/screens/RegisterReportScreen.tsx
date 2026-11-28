@@ -8,7 +8,7 @@ import DynamicDataTable from "@/components/table/DynamicAutoDataTable";
 import { COLORS, FONT_SIZE, FONT_WEIGHT, SPACING } from "@/constants/theme";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
-import { Directory, File, Paths } from "expo-file-system";
+import { saveNativeReportCsv } from "@/modules/report/services/saveNativeReportCsv";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Platform,
@@ -28,7 +28,6 @@ import {
   REGISTER_TABLE_COLUMNS,
   staticReportCells,
 } from "../services/reportTableColumns";
-import { isPickerCancellation } from "../services/trackerText";
 import { usePagination } from "../services/usePagination";
 
 const REPORTS = {
@@ -595,33 +594,8 @@ export default function RegisterReportScreen({
         return;
       }
 
-      // Android lets the user select a destination (such as Downloads). iOS saves to app Documents.
-      let file: File;
-      if (Platform.OS === "android") {
-        let destination: Directory;
-        try {
-          destination = await Directory.pickDirectoryAsync();
-        } catch (pickerError) {
-          if (isPickerCancellation(pickerError)) return;
-          throw pickerError;
-        }
-        if (!destination) return;
-
-        file = destination.createFile(filename, "text/comma-separated-values");
-      } else {
-        file = new File(Paths.document, filename);
-        // Exports use the same name per report and day, so allow a repeat
-        // export to replace the prior file instead of failing as a duplicate.
-        file.create({ overwrite: true });
-      }
-      file.write(prepareReportCsv(csv));
-      if (!file.exists)
-        throw new Error("The file was not created in the selected folder.");
-      setExportMessage(
-        Platform.OS === "android"
-          ? `Saved ${filename} to the selected folder.`
-          : `Saved ${filename} in the app's Documents folder.`,
-      );
+      const message = await saveNativeReportCsv(csv, filename);
+      if (message) setExportMessage(message);
     } catch (exportError) {
       const message =
         exportError instanceof Error

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { RecoveryForm } from "@/components/RecoveryForm";
 import { router } from "expo-router";
 import { AppInput } from "@/components/AppInput";
 import { AppButton } from "@/components/AppButton";
@@ -69,7 +69,7 @@ export default function VerifyOtp() {
   if (!email) return null;
 
   return (
-    <SafeAreaView style={styles.page}>
+    <RecoveryForm>
       <View style={styles.card}>
         <Text style={styles.title}>Verify OTP</Text>
         <Text style={styles.description}>{email}</Text>
@@ -80,12 +80,11 @@ export default function VerifyOtp() {
         <AppButton title={cooldown > 0 ? `Resend OTP (${cooldown}s)` : "Resend OTP"} variant="outline" onPress={() => void resend()} disabled={loading || cooldown > 0} />
         <AppButton title="Change Email" variant="outline" onPress={() => router.replace("/forgot_password")} disabled={loading} />
       </View>
-    </SafeAreaView>
+    </RecoveryForm>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20, backgroundColor: "#F8FAFC" },
   card: { width: "100%", maxWidth: 440, padding: 24, gap: 16, backgroundColor: "#FFFFFF", borderRadius: 16 },
   title: { fontSize: 24, fontWeight: "700", color: "#380A13" },
   description: { fontSize: 14, color: "#64748B" },

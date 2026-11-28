@@ -8,7 +8,7 @@ import DateField from "@/components/DateField";
 import SelectField from "@/components/SelectField";
 import DataTable from "@/components/Table";
 import { COLORS, FONT_SIZE, SPACING } from "@/constants/theme";
-import { Directory, File, Paths } from "expo-file-system";
+import { saveNativeReportCsv } from "@/modules/report/services/saveNativeReportCsv";
 import { router } from "expo-router";
 import {
   useCallback,
@@ -203,17 +203,8 @@ export default function FestiveHomeRoute() {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         setMessage(`Downloaded ${filename}.`);
       } else {
-        let file: File;
-        if (Platform.OS === "android") {
-          const directory = await Directory.pickDirectoryAsync();
-          if (!directory) return;
-          file = directory.createFile(filename, "text/csv");
-        } else {
-          file = new File(Paths.document, filename);
-          file.create({ overwrite: true });
-        }
-        file.write(prepareReportCsv(csv));
-        setMessage(`Saved ${filename}.`);
+        const saved = await saveNativeReportCsv(csv, filename);
+        if (saved) setMessage(saved);
       }
     } catch (cause) {
       if (!isPickerCancellation(cause))
