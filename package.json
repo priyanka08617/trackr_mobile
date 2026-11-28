@@ -7,15 +7,20 @@
     "@expo/ui": "~57.0.26",
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@shopify/flash-list": "2.3.3",
     "expo": "~57.0.34",
+    "expo-application": "~57.0.3",
     "expo-constants": "~57.0.25",
+    "expo-dev-client": "~57.0.22",
     "expo-device": "~57.0.2",
+    "expo-file-system": "~57.0.7",
     "expo-font": "~57.0.4",
     "expo-glass-effect": "~57.0.5",
     "expo-image": "~57.0.5",
     "expo-linking": "~57.0.14",
     "expo-router": "~57.0.32",
     "expo-secure-store": "~57.0.4",
+    "expo-sharing": "~57.0.27",
     "expo-splash-screen": "~57.0.12",
     "expo-status-bar": "~57.0.1",
     "expo-symbols": "~57.0.3",
@@ -46,7 +51,17 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "release:test": "node --test scripts/release-policy.test.cjs",
+    "release:audit": "npm audit --omit=dev",
+    "release:validate": "node scripts/validate-release.cjs"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "install": {
+      "exclude": [
+        "@shopify/flash-list"
+      ]
+    }
+  }
 }

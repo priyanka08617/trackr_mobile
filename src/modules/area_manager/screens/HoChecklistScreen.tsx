@@ -2,18 +2,24 @@ import { router } from "expo-router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Linking,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AppButton } from "@/components/AppButton";
 import { AppInput } from "@/components/AppInput";
+import DynamicDataTable, {
+  type DynamicColumn,
+  type DynamicTableRow,
+} from "@/components/table/DynamicAutoDataTable";
 import { CARD, COLORS, SPACING } from "@/constants/theme";
 import {
-  AreaHeaderBackContext,
+  AreaHeaderBackRegistrationContext,
   AreaHeaderBackVisibleContext,
   AreaHeaderTitleContext,
 } from "@/components/AreaHeaderBackContext";
@@ -24,10 +30,38 @@ import {
   approveHoChecklist,
   loadHoDetails,
   loadHoList,
+  HO_CHECKLIST_PAGE_SIZE,
   type HoChecklist,
   type HoDetails,
   type HoList,
 } from "../services/HoService";
+
+const HO_API_PAGE_SIZE = 10;
+
+async function loadHoPage(page: number, search: string): Promise<HoList> {
+  const apiPagesPerPage = HO_CHECKLIST_PAGE_SIZE / HO_API_PAGE_SIZE;
+  const apiStartPage = (page - 1) * apiPagesPerPage + 1;
+  const firstPage = await loadHoList(apiStartPage, search);
+  const rowOffset = (page - 1) * HO_CHECKLIST_PAGE_SIZE;
+  const rowsNeeded = Math.min(
+    HO_CHECKLIST_PAGE_SIZE,
+    Math.max(0, firstPage.total - rowOffset),
+  );
+  const apiPageCount = Math.ceil(rowsNeeded / HO_API_PAGE_SIZE);
+  const laterPages = await Promise.all(
+    Array.from({ length: Math.max(0, apiPageCount - 1) }, (_, index) =>
+      loadHoList(apiStartPage + index + 1, search),
+    ),
+  );
+
+  return {
+    ...firstPage,
+    page,
+    records: [firstPage, ...laterPages]
+      .flatMap((result) => result.records)
+      .slice(0, HO_CHECKLIST_PAGE_SIZE),
+  };
+}
 
 const display = (value: unknown) =>
   value == null || value === "" || String(value).startsWith("0000-00-00")
@@ -68,6 +102,8 @@ function Field({
 }
 
 export default function HoChecklistScreen() {
+  const { height: windowHeight } = useWindowDimensions();
+  const tableHeight = Math.max(180, windowHeight - 280);
   const [list, setList] = useState<HoList>();
   const [detail, setDetail] = useState<HoDetails>();
   const [code, setCode] = useState<string>();
@@ -80,24 +116,35 @@ export default function HoChecklistScreen() {
   const [error, setError] = useState<string>();
   const [confirm, setConfirm] = useState<HoChecklist>();
   const [notice, setNotice] = useState<string>();
+  const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const mutation = useRef(false);
-  const headerBack = useContext(AreaHeaderBackContext);
+  const registerHeaderBack = useContext(AreaHeaderBackRegistrationContext);
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
   const setTitle = useContext(AreaHeaderTitleContext);
 
-  useEffect(() => {
-    let active = true;
+  const [previousRequest, setPreviousRequest] = useState({ appliedSearch, code, page, refresh });
+  if (
+    previousRequest.appliedSearch !== appliedSearch ||
+    previousRequest.code !== code ||
+    previousRequest.page !== page ||
+    previousRequest.refresh !== refresh
+  ) {
+    setPreviousRequest({ appliedSearch, code, page, refresh });
     setLoading(true);
     setError(undefined);
     if (code) setDetail(undefined);
     else setList(undefined);
+  }
+
+  useEffect(() => {
+    let active = true;
     
     // Removed the company param from loadHoList, if needed, we can pass it
     const task = code
       ? loadHoDetails(code).then((result) => {
           if (active) setDetail(result);
         })
-      : loadHoList(page, appliedSearch).then((result) => {
+      : loadHoPage(page, appliedSearch).then((result) => {
           if (active) setList(result);
         });
         
@@ -124,15 +171,15 @@ export default function HoChecklistScreen() {
   }, [code]);
 
   useEffect(() => {
-    if (headerBack) headerBack.current = goBack;
+    const unregister = registerHeaderBack(goBack);
     setBackVisible(true);
     setTitle(code ? "HO Checklist Details" : "HO Checklist");
     return () => {
-      if (headerBack) headerBack.current = null;
+      unregister();
       setBackVisible(false);
       setTitle(null);
     };
-  }, [code, goBack, headerBack, setBackVisible, setTitle]);
+  }, [code, goBack, registerHeaderBack, setBackVisible, setTitle]);
 
   function applySearch() {
     if (busy || loading) return;
@@ -225,10 +272,6 @@ export default function HoChecklistScreen() {
       {full && (
         <>
           <View style={styles.fieldRow}>
-            <Field column label="HO Mobile" value={item.ho_mobile_no} />
-            <Field column label="HO Email" value={item.ho_email} />
-          </View>
-          <View style={styles.fieldRow}>
             <Field column label="Approved By" value={item.approved_by_name} />
             <Field column label="Approved On" value={item.approved_on} />
           </View>
@@ -237,158 +280,253 @@ export default function HoChecklistScreen() {
     </View>
   );
 
+  const tableRows: DynamicTableRow[] = (list?.records ?? []).map(
+    (item, index) => ({
+      id: item.id,
+      serial: (page - 1) * HO_CHECKLIST_PAGE_SIZE + index + 1,
+      code: item.checklist_code,
+      store: display(item.store_name),
+      date: display(item.checklist_date),
+      region: display(item.region),
+      hoName: display(item.ho_visitor_name),
+      employeeCode: display(item.ho_emp_code),
+      createdOn: display(item.row_created_on),
+      status: Number(item.status) === 4 ? "RM Approved" : "Waiting for RM",
+    }),
+  );
+  const findChecklist = (row: DynamicTableRow) =>
+    (list?.records ?? []).find((item) => item.id === String(row.id));
+  const cell = (value: unknown) => (
+    <Text style={styles.tableCell}>{String(value ?? "-")}</Text>
+  );
+  const columns: DynamicColumn[] = [
+    {
+      title: "#",
+      dataIndex: "serial",
+      align: "center",
+      searchable: false,
+      render: (row) => cell(row.serial),
+    },
+    {
+      title: "Checklist Code",
+      dataIndex: "code",
+      render: (row) => cell(row.code),
+    },
+    { title: "Store", dataIndex: "store", render: (row) => cell(row.store) },
+    {
+      title: "Checklist Date",
+      dataIndex: "date",
+      render: (row) => cell(row.date),
+    },
+    { title: "Region", dataIndex: "region", render: (row) => cell(row.region) },
+    { title: "HO Name", dataIndex: "hoName", render: (row) => cell(row.hoName) },
+    {
+      title: "Employee Code",
+      dataIndex: "employeeCode",
+      render: (row) => cell(row.employeeCode),
+    },
+    {
+      title: "Created On",
+      dataIndex: "createdOn",
+      render: (row) => cell(row.createdOn),
+    },
+    { title: "Status", dataIndex: "status", render: (row) => cell(row.status) },
+    {
+      title: "View",
+      dataIndex: "id",
+      searchable: false,
+      render: (row) => {
+        const item = findChecklist(row);
+        return item ? (
+          <AppButton
+            title="view"
+            variant="outline"
+            style={styles.tableAction}
+            disabled={loading || busy}
+            onPress={() => setCode(item.checklist_code)}
+          />
+        ) : cell("-");
+      },
+    },
+    {
+      title: "Action",
+      dataIndex: "id",
+      searchable: false,
+      render: (row) => {
+        const item = findChecklist(row);
+        return item && Number(item.status) === 2 ? (
+          <AppButton
+            title="Approve"
+            style={styles.tableAction}
+            disabled={loading || busy}
+            onPress={() => setConfirm(item)}
+          />
+        ) : cell("-");
+      },
+    },
+  ];
+
   return (
     <SafeAreaView edges={["left", "right", "bottom"]} style={styles.screen}>
       {code ? (
-        <FlatList
-          key={code}
-          data={detail?.details ?? []}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.content}
-          refreshing={loading}
-          onRefresh={() => {
-            if (!busy) setRefresh((value) => value + 1);
-          }}
-          ListHeaderComponent={
-            <View style={styles.stack}>
-              {banner}
-              {detail && (
-                <View style={styles.card}>
-                  {summary(detail.checklist, true)}
-                </View>
-              )}
-            </View>
-          }
-          renderItem={({ item, index }) => (
-            <View style={styles.stack}>
-              {(index === 0 ||
-                item.area_category !==
-                  detail?.details[index - 1].area_category) && (
-                <Text accessibilityRole="header" style={styles.category}>
-                  {display(item.area_category || "General")}
-                </Text>
-              )}
-              <View style={styles.card}>
-                <Text style={styles.title}>
-                  {index + 1}. {display(item.question_text)}
-                </Text>
-                <View style={styles.fieldRow}>
-                  <Field column label="Marks" value={item.marks} />
-                  <Field column label="Rating" value={item.rating} />
-                </View>
-                <Field label="Why" value={item.complied} />
-                <Field label="HO Remark" value={item.remark} />
-                <Field label="Point Status" value={item.point_status} />
-                <Field label="Store Remark" value={item.store_remark} />
-                {item.file_name ? (
-                  <AppButton
-                    title={
-                      item.original_file_name
-                        ? `View: ${display(item.original_file_name)}`
-                        : "View attachment"
+        <ScrollView key={code} contentContainerStyle={styles.content}>
+          {banner}
+          {detail && (
+            <View style={styles.card}>{summary(detail.checklist, true)}</View>
+          )}
+          {!loading && detail?.details.length === 0 && (
+            <Text style={styles.label}>No checklist rows found.</Text>
+          )}
+          {detail &&
+            Array.from(
+              new Set(detail.details.map((item) => item.area_category || "General")),
+            ).map((category) => {
+              const collapsed = collapsedCategories.includes(category);
+              const categoryItems = detail.details.filter(
+                (item) => (item.area_category || "General") === category,
+              );
+              return (
+                <View key={category} style={styles.categoryGroup}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: !collapsed }}
+                    onPress={() =>
+                      setCollapsedCategories((current) =>
+                        current.includes(category)
+                          ? current.filter((value) => value !== category)
+                          : [...current, category],
+                      )
                     }
-                    variant="outline"
-                    onPress={() => void openAttachment(item.file_name)}
-                  />
-                ) : (
-                  <Field label="Attachment" value={null} />
-                )}
-              </View>
-            </View>
-          )}
-          ListEmptyComponent={
-            !loading && detail ? (
-              <Text style={styles.label}>No checklist rows found.</Text>
-            ) : null
-          }
-        />
+                    style={styles.categoryHeader}
+                  >
+                    <Text style={styles.categoryTitle}>{category}</Text>
+                    <Text style={styles.categoryToggle}>{collapsed ? "+" : "−"}</Text>
+                  </Pressable>
+                  {!collapsed && categoryItems.map((item) => {
+                    const index = detail.details.indexOf(item);
+                    return (
+                      <View key={item.id} style={styles.questionCard}>
+                        <Text style={styles.questionTitle}>
+                          #{index + 1} · {display(item.question_text)}
+                        </Text>
+                        <View style={styles.detailTable}>
+                          <View style={styles.detailMetricsRow}>
+                            {[
+                              ["Marks", item.marks],
+                              ["Rating", item.rating],
+                              ["Point Status", item.point_status],
+                            ].map(([label, value]) => (
+                              <View key={label} style={styles.detailMetric}>
+                                <Text style={styles.label}>{label}</Text>
+                                <Text
+                                  style={[
+                                    styles.value,
+                                    label === "Marks" && styles.markValue,
+                                    label === "Marks" && {
+                                      color:
+                                        Number(value) === 1
+                                          ? COLORS.success
+                                          : Number(value) === 0
+                                            ? COLORS.danger
+                                            : COLORS.text,
+                                    },
+                                  ]}
+                                >
+                                  {display(value)}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                          {[
+                            ["Why", item.complied],
+                            ["HO Remark", item.remark],
+                            ["Store Remark", item.store_remark],
+                          ].map(([label, value]) => (
+                            <View key={label} style={styles.detailAnswerRow}>
+                              <Text style={styles.detailAnswerLabel}>{label}</Text>
+                              <Text style={styles.detailAnswerValue}>{display(value)}</Text>
+                            </View>
+                          ))}
+                          <View style={styles.detailAnswerRow}>
+                            <Text style={styles.detailAnswerLabel}>Attachment</Text>
+                            {item.file_name ? (
+                              <AppButton
+                                title={item.original_file_name
+                                  ? `View: ${display(item.original_file_name)}`
+                                  : "View attachment"}
+                                variant="outline"
+                                onPress={() => void openAttachment(item.file_name)}
+                              />
+                            ) : (
+                              <Text style={styles.detailAnswerValue}>-</Text>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              );
+            })}
+        </ScrollView>
       ) : (
-        <FlatList
-          data={list?.records ?? []}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          refreshing={loading}
-          onRefresh={() => {
-            if (!busy) setRefresh((value) => value + 1);
-          }}
-          ListHeaderComponent={
-            <View style={styles.stack}>
-              <View style={styles.searchRow}>
-                <AppInput
-                  containerStyle={styles.search}
-                  accessibilityLabel="Search HO checklists"
-                  placeholder="Search code, store or HO name"
-                  value={search}
-                  maxLength={150}
-                  editable={!busy}
-                  onChangeText={setSearch}
-                  returnKeyType="search"
-                  onSubmitEditing={applySearch}
-                />
-                <AppButton
-                  title="Search"
-                  disabled={loading || busy}
-                  onPress={applySearch}
-                />
-              </View>
-              {list && (
-                <Text style={styles.label}>
-                  {list.total} checklists · {list.region}
-                </Text>
-              )}
-              {banner}
+        <View style={[styles.content, styles.listContent]}>
+          <View style={styles.stack}>
+            <View style={styles.searchRow}>
+              <AppInput
+                containerStyle={styles.search}
+                accessibilityLabel="Search HO checklists"
+                placeholder="Search code, store or HO name"
+                value={search}
+                maxLength={150}
+                editable={!busy}
+                onChangeText={setSearch}
+                returnKeyType="search"
+                onSubmitEditing={applySearch}
+              />
+              <AppButton
+                title="Search"
+                disabled={loading || busy}
+                onPress={applySearch}
+              />
             </View>
-          }
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              {summary(item)}
-              <View style={styles.actions}>
-                <AppButton
-                  title="View Details"
-                  variant="outline"
-                  style={styles.action}
-                  disabled={loading || busy}
-                  onPress={() => setCode(item.checklist_code)}
-                />
-                {Number(item.status) === 2 && (
-                  <AppButton
-                    title="Approve"
-                    style={styles.action}
-                    disabled={loading || busy}
-                    onPress={() => setConfirm(item)}
-                  />
-                )}
-              </View>
+            {list && (
+              <Text style={styles.label}>
+                {list.total} checklists · {list.region}
+              </Text>
+            )}
+            {banner}
+          </View>
+          <View style={styles.tableContainer}>
+            <DynamicDataTable
+              columns={columns}
+              data={tableRows}
+              height={tableHeight}
+              loading={loading}
+              refreshKey={`${page}-${refresh}`}
+              emptyMessage={error ? "" : "No HO checklists found."}
+            />
+          </View>
+          {list && list.total > 0 && (
+            <View style={styles.pagination}>
+              <AppButton
+                title="Previous"
+                variant="outline"
+                disabled={loading || busy || page <= 1}
+                onPress={() => setPage((value) => value - 1)}
+              />
+              <Text style={styles.label}>
+                Page {page} of {Math.max(1, Math.ceil(list.total / HO_CHECKLIST_PAGE_SIZE))}
+              </Text>
+              <AppButton
+                title="Next"
+                variant="outline"
+                disabled={loading || busy || page * HO_CHECKLIST_PAGE_SIZE >= list.total}
+                onPress={() => setPage((value) => value + 1)}
+              />
             </View>
           )}
-          ListEmptyComponent={
-            !loading && !error ? (
-              <Text style={styles.label}>No HO checklists found.</Text>
-            ) : null
-          }
-          ListFooterComponent={
-            list && list.total > 0 ? (
-              <View style={styles.pagination}>
-                <AppButton
-                  title="Previous"
-                  variant="outline"
-                  disabled={loading || busy || page <= 1}
-                  onPress={() => setPage((value) => value - 1)}
-                />
-                <Text style={styles.label}>
-                  Page {page} of {Math.max(1, Math.ceil(list.total / 10))}
-                </Text>
-                <AppButton
-                  title="Next"
-                  variant="outline"
-                  disabled={loading || busy || page * 10 >= list.total}
-                  onPress={() => setPage((value) => value + 1)}
-                />
-              </View>
-            ) : null
-          }
-        />
+        </View>
       )}
       {detail && !loading && Number(detail.checklist.status) === 2 && (
         <View style={styles.approvalBar}>
@@ -420,8 +558,9 @@ export default function HoChecklistScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.surface },
-  content: { padding: SPACING.lg, gap: SPACING.lg, paddingBottom: SPACING.xxl },
+  screen: { flex: 1, backgroundColor: COLORS.surface,},
+  content: { padding: SPACING.lg, gap: SPACING.lg, paddingBottom: SPACING.xxl,paddingTop:0 },
+  listContent: { flex: 1 },
   stack: { gap: SPACING.sm },
   card: { ...CARD, borderRadius: 12, gap: SPACING.md },
   heading: { flexDirection: "row", alignItems: "flex-start", gap: SPACING.sm },
@@ -443,13 +582,79 @@ const styles = StyleSheet.create({
     lineHeight: 23,
   },
   category: { color: COLORS.primary, fontSize: 17, fontWeight: "700" },
+  categoryGroup: { gap: SPACING.sm },
+  categoryHeader: {
+    minHeight: 46,
+    paddingHorizontal: SPACING.md,
+    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  categoryTitle: { color: COLORS.white, fontSize: 15, fontWeight: "700" },
+  categoryToggle: { color: COLORS.white, fontSize: 22, fontWeight: "600" },
+  questionCard: { ...CARD, borderRadius: 10, gap: SPACING.md },
+  questionTitle: {
+    color: COLORS.text,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: "600",
+  },
+  detailTable: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  detailMetricsRow: {
+    flexDirection: "row",
+    backgroundColor: COLORS.surface,
+  },
+  detailMetric: {
+    flex: 1,
+    gap: 4,
+    padding: SPACING.sm,
+    borderRightWidth: 1,
+    borderColor: COLORS.border,
+  },
+  markValue: { fontWeight: "700" },
+  detailAnswerRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: SPACING.sm,
+    padding: SPACING.sm,
+    borderTopWidth: 1,
+    borderColor: COLORS.border,
+  },
+  detailAnswerLabel: {
+    width: 110,
+    color: COLORS.textLight,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  detailAnswerValue: { flex: 1, color: COLORS.text, fontSize: 14, lineHeight: 20 },
   fieldRow: { flexDirection: "row", gap: SPACING.md },
   field: { gap: 4 },
   column: { flex: 1, minWidth: 0 },
   label: { color: COLORS.textLight, fontSize: 12 },
   value: { color: COLORS.text, fontSize: 14, lineHeight: 21 },
   searchRow: { flexDirection: "row", gap: SPACING.sm, alignItems: "center" },
-  search: { flex: 1, minWidth: 0 },
+  search: { flex: 1, minWidth: 0,paddingTop:10 },
+  tableContainer: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 5,
+    overflow: "hidden",
+  },
+  tableCell: {
+    color: COLORS.text,
+    fontSize: 12,
+    lineHeight: 15,
+    includeFontPadding: false,
+  },
+  tableAction: { minHeight: 28, paddingHorizontal: SPACING.sm },
   actions: { flexDirection: "row", gap: SPACING.sm },
   action: { flex: 1 },
   pagination: {

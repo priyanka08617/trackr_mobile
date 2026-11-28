@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 
@@ -50,7 +51,7 @@ export async function loadSopDocuments(
   let body: string;
 
   try {
-    response = await fetch(endpoint.toString(), {
+    response = await fetchWithSession(endpoint.toString(), {
       method: "GET",
       credentials: "omit",
       headers: {

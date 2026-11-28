@@ -11,7 +11,7 @@ import DynamicDataTable, {
   type DynamicTableRow,
 } from "@/components/table/DynamicAutoDataTable";
 import { COLORS, FONT_SIZE, SPACING } from "@/constants/theme";
-import { Directory, File, Paths } from "expo-file-system";
+import { saveNativeReportCsv } from "@/modules/report/services/saveNativeReportCsv";
 import { router } from "expo-router";
 import {
   useCallback,
@@ -141,19 +141,24 @@ export default function FasciaReportScreen() {
     return () => setHeaderTitle(null);
   }, [setHeaderTitle]);
 
-  const loadOptions = useCallback(async () => {
-    setOptionsError(undefined);
-    try {
-      const result = await loadFasciaReportOptions();
-      setStores(result.stores);
-    } catch (cause) {
-      setOptionsError(
-        cause instanceof Error
-          ? cause.message
-          : "Unable to load fascia report filters.",
-      );
-    }
+  const loadOptions = useCallback(() => {
+    return loadFasciaReportOptions()
+      .then((result) => {
+        setStores(result.stores);
+      })
+      .catch((cause: unknown) => {
+        setOptionsError(
+          cause instanceof Error
+            ? cause.message
+            : "Unable to load fascia report filters.",
+        );
+      });
   }, []);
+
+  const reloadOptions = useCallback(() => {
+    setOptionsError(undefined);
+    return loadOptions();
+  }, [loadOptions]);
 
   useEffect(() => {
     void loadOptions();
@@ -286,60 +291,8 @@ export default function FasciaReportScreen() {
         setTimeout(() => URL.revokeObjectURL(url), 60_000);
         setMessage(`Downloaded ${filename}.`);
       } else {
-        let file: File;
-        if (Platform.OS === "android") {
-          let directory: Directory;
-          try {
-            directory = await Directory.pickDirectoryAsync();
-          } catch (cause) {
-            if (isPickerCancellation(cause)) return;
-            throw cause;
-          }
-          if (!directory) return;
-          try {
-            file = directory.createFile(
-              filename,
-              "text/comma-separated-values",
-            );
-          } catch {
-            try {
-              const existing = new File(directory, filename);
-              if (existing.exists) existing.delete();
-              file = directory.createFile(
-                filename,
-                "text/comma-separated-values",
-              );
-            } catch {
-              const stamp = new Date()
-                .toISOString()
-                .replace(/[:.]/g, "-")
-                .slice(0, 19);
-              const unique = filename.replace(/\.csv$/i, `-${stamp}.csv`);
-              file = directory.createFile(
-                unique,
-                "text/comma-separated-values",
-              );
-            }
-          }
-        } else {
-          file = new File(Paths.document, filename);
-          try {
-            if (file.exists) file.delete();
-          } catch {
-            const stamp = new Date()
-              .toISOString()
-              .replace(/[:.]/g, "-")
-              .slice(0, 19);
-            file = new File(
-              Paths.document,
-              filename.replace(/\.csv$/i, `-${stamp}.csv`),
-            );
-          }
-          file.create();
-        }
-        file.write(prepareReportCsv(csv));
-        if (!file.exists) throw new Error("The CSV file was not created.");
-        setMessage(`Saved ${filename}.`);
+        const saved = await saveNativeReportCsv(csv, filename);
+        if (saved) setMessage(saved);
       }
     } catch (cause) {
       if (!isPickerCancellation(cause))
@@ -375,7 +328,7 @@ export default function FasciaReportScreen() {
             </Text>
             <AppButton
               title="Retry filters"
-              onPress={() => void loadOptions()}
+              onPress={() => void reloadOptions()}
             />
           </View>
         )}

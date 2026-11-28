@@ -78,12 +78,17 @@ export default function VoidScreen() {
   const setBackVisible = useContext(AreaHeaderBackVisibleContext);
   const setTitle = useContext(AreaHeaderTitleContext);
 
-  useEffect(() => {
-    let active = true;
+  const [previousRequest, setPreviousRequest] = useState({ filters, refresh });
+  if (previousRequest.filters !== filters || previousRequest.refresh !== refresh) {
+    setPreviousRequest({ filters, refresh });
     setLoading(true);
     setError(undefined);
     setSelected([]);
     setRecords([]);
+  }
+
+  useEffect(() => {
+    let active = true;
 
     const task = filters
       ? loadVoidRecords(filters).then((result) => {

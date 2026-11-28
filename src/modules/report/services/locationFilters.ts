@@ -1,3 +1,4 @@
+import { getSessionSnapshot, subscribeSession } from "@/services/sessionService";
 import { loadAreaStores, type AreaStore } from "./StoresService";
 
 export function uniqueLocationNames(values: readonly string[]): string[] {
@@ -21,16 +22,34 @@ export function storeLocationOptions(stores: readonly AreaStore[], region = "", 
   };
 }
 
-let cached: { stores: AreaStore[]; time: number } | undefined;
-let pending: Promise<AreaStore[]> | undefined;
+let cache: {
+  scope: ReturnType<typeof getSessionSnapshot>;
+  stores?: AreaStore[];
+  time: number;
+  pending?: Promise<AreaStore[]>;
+} | undefined;
+subscribeSession(() => { cache = undefined; });
+
 export async function loadLocationFilterOptions(region = "", zone = "") {
-  if (!cached || Date.now() - cached.time > 60_000) {
-    pending ??= loadAreaStores();
+  const scope = getSessionSnapshot();
+  if (!scope.identity || !scope.companyId) throw new Error("Login session not found. Please log in again.");
+  if (cache?.scope !== scope) {
+    cache = { scope, time: 0 };
+  }
+  const entry = cache;
+  if (!entry.stores || Date.now() - entry.time > 60_000) {
+    const pending = entry.pending ??= loadAreaStores();
     try {
-      cached = { stores: await pending, time: Date.now() };
+      const stores = await pending;
+      if (scope !== getSessionSnapshot()) throw new Error("Login session changed. Please try again.");
+      entry.stores = stores;
+      entry.time = Date.now();
     } finally {
-      pending = undefined;
+      if (entry.pending === pending) entry.pending = undefined;
     }
   }
-  return storeLocationOptions(cached.stores, region, zone);
+  if (scope !== getSessionSnapshot()) {
+    throw new Error("Login session changed. Please try again.");
+  }
+  return storeLocationOptions(entry.stores, region, zone);
 }

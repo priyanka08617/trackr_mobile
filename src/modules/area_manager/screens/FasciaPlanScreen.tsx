@@ -120,35 +120,40 @@ export default function FasciaPlanScreen() {
   const requestVersion = useRef(0);
   const mutationLock = useRef(false);
 
-  const loadList = useCallback(async (nextPage = 1) => {
+  const loadList = useCallback((nextPage = 1) => {
     const version = ++requestVersion.current;
     const nextOffset = (nextPage - 1) * PAGE_SIZE;
+    return fasciaRequest<{ records: FasciaPlan[]; total: number }>("view", undefined, {
+      limit: String(PAGE_SIZE),
+      offset: String(nextOffset),
+    })
+      .then((result) => {
+        if (version !== requestVersion.current) return;
+        setRecords(result.records);
+        setTotal(Number(result.total));
+        setCurrentPage(nextPage);
+      })
+      .catch((cause: unknown) => {
+        if (version === requestVersion.current) setError(message(cause));
+      })
+      .finally(() => {
+        if (version === requestVersion.current) setLoading(false);
+      });
+  }, []);
+
+  const reloadList = useCallback((nextPage: number) => {
     setLoading(true);
     setError("");
-    try {
-      const result = await fasciaRequest<{
-        records: FasciaPlan[];
-        total: number;
-      }>("view", undefined, {
-        limit: String(PAGE_SIZE),
-        offset: String(nextOffset),
-      });
-      if (version !== requestVersion.current) return;
-      setRecords(result.records);
-      setTotal(Number(result.total));
-      setCurrentPage(nextPage);
-    } catch (cause) {
-      if (version === requestVersion.current) setError(message(cause));
-    } finally {
-      if (version === requestVersion.current) setLoading(false);
-    }
+    return loadList(nextPage);
+  }, [loadList]);
+  const invalidateListRequest = useCallback(() => {
+    requestVersion.current += 1;
   }, []);
+
   useEffect(() => {
     void loadList();
-    return () => {
-      requestVersion.current++;
-    };
-  }, [loadList]);
+    return invalidateListRequest;
+  }, [invalidateListRequest, loadList]);
 
   const returnToList = useCallback(() => {
     requestVersion.current++;
@@ -157,8 +162,8 @@ export default function FasciaPlanScreen() {
     setDetails([]);
     setActual({});
     setError("");
-    void loadList(1);
-  }, [loadList]);
+    void reloadList(1);
+  }, [reloadList]);
   const goBack = useCallback(() => {
     if (busy || loading) return;
     if (
@@ -490,11 +495,11 @@ export default function FasciaPlanScreen() {
                 totalRecords={total}
                 loading={loading}
                 onRefresh={() => {
-                  if (!loading && !busy) void loadList(currentPage);
+                  if (!loading && !busy) void reloadList(currentPage);
                 }}
                 onPageChange={(nextPage) => {
                   if (!loading && !busy && nextPage !== currentPage) {
-                    void loadList(nextPage);
+                    void reloadList(nextPage);
                   }
                 }}
                 emptyMessage="No fascia plans found."

@@ -9,16 +9,13 @@ import {
 } from "@/constants/theme";
 import { loginUser } from "@/services/authService";
 import type { Company } from "@/services/companyService";
-import {
-  clearAuthToken,
-  clearRefreshToken,
-  setAuthToken,
-  setRefreshToken,
-} from "@/storage/authStorage";
-import { clearCompany, getSavedCompany } from "@/storage/companyStorage";
+import { useSession } from "@/hooks/useSession";
+import { getSessionDashboard } from "@/services/sessionNavigation";
+import { startSession, switchCompany } from "@/services/sessionService";
+import { getSavedCompany } from "@/storage/companyStorage";
 import { getPasswordError } from "@/utils/validation";
 import { Image } from "expo-image";
-import { router, type Href } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useState } from "react";
 import {
@@ -35,6 +32,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
+  const { identity } = useSession();
   const [company, setCompany] = useState<Company | null>(null);
   const [companyError, setCompanyError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
@@ -80,42 +78,7 @@ export default function LoginScreen() {
         throw new Error(result.message || "Login failed.");
       }
 
-      const folder = result.data.user.user_login_folder_path;
-      if (!folder || !/^[a-zA-Z0-9_]+$/.test(folder)) {
-        throw new Error("Invalid login folder.");
-      }
-
-      try {
-        await setAuthToken(result.data.access_token);
-        await setRefreshToken(result.data.refresh_token);
-      } catch (error) {
-        await Promise.allSettled([clearAuthToken(), clearRefreshToken()]);
-        throw new Error(
-          error instanceof Error
-            ? `Unable to save login session: ${error.message}`
-            : "Unable to save login session.",
-        );
-      }
-
-      // START 2026-11-11 12:59 IST - Test logs and /test route disabled; /test is not a registered screen.
-      // console.log("Login user data:", result.data.user);
-      // console.log("Folder received:", folder);
-      // router.replace(`/${folder}/test` as Href);
-      // END 2026-11-11 12:59 IST
-
-      // Fetch authenticated user details
-      // const userProfile = await getUserProfile(result.data.access_token);
-
-      // try {
-      //   const userProfile = await getUserProfile(result.data.access_token);
-      //   console.log("User Profile:", userProfile);
-      // } catch (error) {
-      //   console.error("Profile API Failed:", error);
-      // }
-
-      // console.log("User Profile:", userProfile);
-
-      router.replace(`/${folder}/dashboard` as Href);
+      await startSession(result.data, result.company);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
 
@@ -140,15 +103,15 @@ export default function LoginScreen() {
 
   const handleChangeCompany = async () => {
     try {
-      await clearAuthToken();
-      await clearRefreshToken();
-      await clearCompany();
+      await switchCompany();
       setConfirmCompanyChange(false);
       router.replace("/company");
     } catch {
       Alert.alert("Error", "Unable to change company.");
     }
   };
+
+  if (identity) return <Redirect href={getSessionDashboard(identity)} />;
 
   const companyName = company?.company_name ?? "Company not selected";
 
@@ -162,11 +125,14 @@ export default function LoginScreen() {
       />
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+          automaticallyAdjustKeyboardInsets
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
             <Image
@@ -291,7 +257,15 @@ export default function LoginScreen() {
             />
           </View>
 
-          <Text style={styles.footer}>Powered by TrackR</Text>
+          {/* <Text style={styles.footer}>Designed & Developed by Ask-For</Text> */}
+
+           <Text style={styles.footer}>
+                      <Text style={styles.footerCredit}>Designed &amp; Developed by </Text>
+                      <Text style={styles.footerBrand}>ASK-FOR</Text>
+                    </Text>
+
+
+                    
         </ScrollView>
       </KeyboardAvoidingView>
       <Modal
@@ -417,6 +391,7 @@ const styles = StyleSheet.create({
   },
   inputText: {
     fontWeight: FONT_WEIGHT.semibold,
+    height: 48,
   },
   passwordGroup: {
     position: "relative",
@@ -450,16 +425,44 @@ const styles = StyleSheet.create({
   },
   signInButton: {
     marginBottom: SPACING.xl,
+    height: 48,
   },
-  footer: {
+
+  // ===========================================================
+  // footer: {
+  //   marginTop: "auto",
+  //   paddingTop: SPACING.xl,
+  //   paddingBottom: SPACING.lg,
+  //   paddingHorizontal:SPACING.md,
+  //   color: COLORS.primary,
+  //   fontSize: 12,
+  //   fontWeight: FONT_WEIGHT.bold,
+  //   textAlign: "right",
+  //   fontStyle:"italic",
+  //   // AlignSelf: "Stretch",
+  // },
+
+
+    footer: {
     marginTop: "auto",
-    paddingTop: SPACING.xl,
-    paddingBottom: SPACING.lg,
-    color: COLORS.primary,
-    fontSize: FONT_SIZE.sm,
+    marginBottom: SPACING.xl,
+    paddingHorizontal:SPACING.md,
+    textAlign: "right",
+    fontSize: 12,
     fontWeight: FONT_WEIGHT.semibold,
-    textAlign: "center",
+    color: COLORS.primary,
   },
+  footerCredit: {
+    fontStyle: "italic",
+    fontWeight: FONT_WEIGHT.semibold,
+  },
+  footerBrand: {
+    fontStyle: "normal",
+    fontWeight: FONT_WEIGHT.bold,
+  },
+
+
+  // =====================================================
   modalOverlay: {
     flex: 1,
     alignItems: "center",

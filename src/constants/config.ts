@@ -11,6 +11,7 @@ export const APP_CONFIG = {
   storageKeys: {
     company: "trackr_company",
     authToken: "trackr_auth_token",
+    authSession: "trackr_auth_session",
     user: "trackr_user",
     refreshToken: "trackr_refresh_token",
   },

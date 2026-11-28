@@ -30,20 +30,27 @@ export default function EscalationMatrix({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
 
-  const loadDocuments = useCallback(async () => {
+  const loadDocuments = useCallback(() => {
+    return loadEscalationDocuments()
+      .then((result) => {
+        setDocuments(result);
+      })
+      .catch((cause: unknown) => {
+        setDocuments([]);
+        setError(
+          cause instanceof Error ? cause.message : "Unable to load documents.",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const reloadDocuments = useCallback(() => {
     setLoading(true);
     setError(undefined);
-    try {
-      setDocuments(await loadEscalationDocuments());
-    } catch (cause) {
-      setDocuments([]);
-      setError(
-        cause instanceof Error ? cause.message : "Unable to load documents.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    return loadDocuments();
+  }, [loadDocuments]);
 
   useEffect(() => {
     if (backHandlerRef) backHandlerRef.current = onBack;
@@ -113,7 +120,7 @@ export default function EscalationMatrix({ onBack }: { onBack: () => void }) {
                 </Text>
                 <AppButton
                   title="Try again"
-                  onPress={() => void loadDocuments()}
+                  onPress={() => void reloadDocuments()}
                   style={styles.retry}
                 />
               </>

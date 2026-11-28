@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 
@@ -85,10 +86,6 @@ export async function fetchCompanyFaqs(
 
   //   const rawResponse = await response.text();
 
-  // console.log("FAQ API URL:", endpoint.toString());
-  // console.log("FAQ HTTP Status:", response.status);
-  // console.log("FAQ Content Type:", response.headers.get("content-type"));
-  // console.log("FAQ Raw Response:", rawResponse.substring(0, 1500));
 
   // let payload;
 
@@ -122,7 +119,7 @@ export async function fetchCompanyFaqs(
   // }
 
   // STEP 4: Call PHP API
-  const response = await fetch(endpoint.toString(), {
+  const response = await fetchWithSession(endpoint.toString(), {
     method: "GET",
     headers: {
       Accept: "application/json",
@@ -134,10 +131,6 @@ export async function fetchCompanyFaqs(
   // STEP 5: Read API response only once
   const rawResponse = await response.text();
 
-  console.log("FAQ API URL:", endpoint.toString());
-  console.log("FAQ HTTP Status:", response.status);
-  console.log("FAQ Content Type:", response.headers.get("content-type"));
-  console.log("FAQ Raw Response:", rawResponse.substring(0, 1500));
 
   let result: Record<string, unknown>;
 

@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { getAuthToken } from "@/storage/authStorage";
 import { getSavedCompany } from "@/storage/companyStorage";
 
@@ -35,12 +36,12 @@ export interface OmniReturnPage {
 interface OmniReturnResponse {
   success?: boolean;
   message?: string;
-  records?: Array<
+  records?: (
     Omit<OmniReturnRecord, "submitted_by"> & {
       submitted_by?: string | null;
       s1_name?: string | null;
     }
-  >;
+  )[];
   total?: number | string | null;
   limit?: number | string | null;
   offset?: number | string | null;
@@ -73,7 +74,7 @@ async function requestOmniReturns(
   let body: string;
 
   try {
-    response = await fetch(endpoint, {
+    response = await fetchWithSession(endpoint, {
       method: "GET",
       credentials: "omit",
       signal,

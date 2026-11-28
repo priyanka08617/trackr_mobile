@@ -1,3 +1,4 @@
+import { fetchWithSession } from "@/services/sessionService";
 import { getSavedCompany } from "@/storage/companyStorage";
 import { getAuthToken } from "@/storage/authStorage";
 import type {
@@ -37,7 +38,7 @@ export async function rmRequest<T>(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 30_000);
   try {
-    const response = await fetch(url.toString(), {
+    const response = await fetchWithSession(url.toString(), {
       method: body === undefined ? "GET" : "POST",
 
       cache: "no-store",
