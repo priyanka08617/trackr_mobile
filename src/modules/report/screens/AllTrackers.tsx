@@ -46,19 +46,19 @@ const PAGE_SIZE = 50;
 
 const TRACKERS: TrackerLink[] = [
   { id: "fmcg_de", name: "FMCG D&E", icon: "shoppingCart" },
-  { id: "non_apps_dd", name: "Non-Apps D&D ", icon: "clipboardList" },
-  { id: "snap_up_dd", name: "SnapUp D&D ", icon: "calendar" },
-  { id: "beauty_dd", name: " Beauty D&D / TESTER", icon: "gem" },
-  { id: "tso_dd", name: "TSO D&D", icon: "chartLine" },
+  { id: "non_apps_dd", name: "Non-Apps D&D ", icon: "archive" },
+  { id: "snap_up_dd", name: "SnapUp D&D ", icon: "magic" },
+  { id: "beauty_dd", name: " Beauty D&D / TESTER", icon: "palette" },
+  { id: "tso_dd", name: "TSO D&D", icon: "boxOpen" },
   {
     id: "store_incident_log",
     name: "Store Incident Log",
-    icon: "archive",
+    icon: "userTie",
   },
   {
     id: "jewellery_hair_accessories_dd",
     name: "Jewellery & Hair Accessories D&D",
-    icon: "palette",
+    icon: "gem",
   },
   {
     id: "unloading_payment",
@@ -66,7 +66,7 @@ const TRACKERS: TrackerLink[] = [
     icon: "truckLoading",
   },
   { id: "canteen_fooding", name: "Canteen Fooding", icon: "utensils" },
-  { id: "fmcg_price_mismatch", name: "FMCG Price Mismatch", icon: "tag" },
+  { id: "fmcg_price_mismatch", name: "FMCG Price Mismatch", icon: "balanceScaleLeft" },
   {
     id: "grt_packet_readiness",
     name: "GRT Packet Readiness",
@@ -75,12 +75,12 @@ const TRACKERS: TrackerLink[] = [
   {
     id: "ist_packet_readiness",
     name: "IST Packet Readiness",
-    icon: "boxOpen",
+    icon: "truck",
   },
   { id: "near_to_expiry", name: "Near To Expiry", icon: "hourglassHalf" },
   { id: "damage_apparel", name: "Damage Apparel", icon: "unlink" },
-  { id: "missing_tag", name: "Missing Tag", icon: "tag" },
-  { id: "sensor_tag", name: "Sensor Tag", icon: "magic" },
+  { id: "missing_tag", name: "Missing Tag", icon: "chartLine" },
+  { id: "sensor_tag", name: "Sensor Tag", icon: "tag" },
   {
     id: "monthly_lp_global_count",
     name: "Monthly LP Global Count",
